@@ -191,7 +191,7 @@
         kind: "civil",
         r: 12,
         speed: rand(18, 36),
-        color: ["#cfc6b4", "#b8aea0", "#ddd4c4", "#a89f90"][i % 4],
+        color: ["#5c6b7a", "#8b6b5c", "#6a7a5c", "#7a6a78", "#4a5a68", "#9a7a5a"][i % 6],
         sign: Math.random() < 0.45 ? signs[i % signs.length] : null,
       });
       state.entities.push(c);
@@ -689,148 +689,425 @@
     }
   }
 
-  /* —— Render —— */
+  /* —— Render (rue naturelle + silhouettes lisibles) —— */
   function drawBackground() {
-    const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, "#0c1522");
-    g.addColorStop(0.45, "#152032");
-    g.addColorStop(1, "#0a1018");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, W, H);
+    // Overcast dusk sky — natural, not neon
+    const sky = ctx.createLinearGradient(0, 0, 0, 160);
+    sky.addColorStop(0, "#4a5564");
+    sky.addColorStop(0.55, "#6a7380");
+    sky.addColorStop(1, "#8a9098");
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, W, 160);
 
-    // Asphalt wet streaks
-    ctx.strokeStyle = "rgba(255,255,255,0.03)";
-    ctx.lineWidth = 2;
-    for (let i = 0; i < 18; i++) {
+    // Far building row
+    ctx.fillStyle = "#5c6570";
+    ctx.fillRect(0, 70, W, 90);
+    for (let i = 0; i < 9; i++) {
+      const bx = i * 85 - 20;
+      ctx.fillStyle = i % 2 ? "#6a737e" : "#55606c";
+      ctx.fillRect(bx, 55 + (i % 3) * 8, 78, 105 - (i % 3) * 8);
+    }
+
+    // Sidewalks
+    ctx.fillStyle = "#9a9a92";
+    ctx.fillRect(0, 160, 88, H - 160);
+    ctx.fillRect(W - 88, 160, 88, H - 160);
+    ctx.fillStyle = "#8a8a82";
+    for (let y = 170; y < H; y += 36) {
+      ctx.fillRect(4, y, 80, 2);
+      ctx.fillRect(W - 84, y + 10, 80, 2);
+    }
+    // Curb
+    ctx.fillStyle = "#6e6e66";
+    ctx.fillRect(86, 160, 6, H - 160);
+    ctx.fillRect(W - 92, 160, 6, H - 160);
+
+    // Asphalt street
+    const road = ctx.createLinearGradient(94, 0, W - 94, 0);
+    road.addColorStop(0, "#3a3d42");
+    road.addColorStop(0.5, "#45484e");
+    road.addColorStop(1, "#3a3d42");
+    ctx.fillStyle = road;
+    ctx.fillRect(92, 160, W - 184, H - 160);
+
+    // Wet asphalt sheen
+    ctx.fillStyle = "rgba(255,255,255,0.035)";
+    for (let i = 0; i < 12; i++) {
       ctx.beginPath();
-      ctx.moveTo(40 + i * 40, 100);
-      ctx.lineTo(10 + i * 38, H);
+      ctx.ellipse(140 + i * 45, 220 + (i % 5) * 160, 28, 8, -0.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Center dashed line
+    ctx.strokeStyle = "rgba(200, 180, 90, 0.35)";
+    ctx.lineWidth = 3;
+    ctx.setLineDash([18, 16]);
+    ctx.beginPath();
+    ctx.moveTo(W / 2, 175);
+    ctx.lineTo(W / 2, H - 20);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Crosswalk near mid
+    ctx.fillStyle = "rgba(230, 230, 220, 0.28)";
+    for (let i = 0; i < 8; i++) {
+      ctx.fillRect(110 + i * 62, H * 0.55, 34, 14);
+    }
+
+    // Manhole
+    ctx.strokeStyle = "rgba(0,0,0,0.35)";
+    ctx.fillStyle = "rgba(50, 52, 56, 0.8)";
+    ctx.beginPath();
+    ctx.ellipse(W * 0.42, H * 0.72, 16, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Façades left / right (pierre / crépi naturels)
+    function drawStreetWall(x, tone) {
+      ctx.fillStyle = tone;
+      ctx.fillRect(x, 160, 86, H - 160);
+      ctx.fillStyle = "rgba(0,0,0,0.12)";
+      ctx.fillRect(x + (x === 0 ? 78 : 0), 160, 8, H - 160);
+      for (let y = 180; y < H - 40; y += 52) {
+        const lit = ((y / 52) | 0) % 3 !== 1;
+        ctx.fillStyle = lit ? "rgba(210, 195, 150, 0.4)" : "rgba(35, 42, 50, 0.55)";
+        ctx.fillRect(x + 12, y, 24, 30);
+        ctx.fillRect(x + 48, y + 8, 24, 30);
+        ctx.strokeStyle = "rgba(0,0,0,0.2)";
+        ctx.strokeRect(x + 12, y, 24, 30);
+        ctx.strokeRect(x + 48, y + 8, 24, 30);
+      }
+      // Storefront
+      ctx.fillStyle = "#5e564c";
+      ctx.fillRect(x, H - 150, 86, 150);
+      ctx.fillStyle = "rgba(170, 195, 205, 0.28)";
+      ctx.fillRect(x + 10, H - 130, 66, 55);
+      ctx.strokeStyle = "rgba(0,0,0,0.3)";
+      ctx.strokeRect(x + 10, H - 130, 66, 55);
+    }
+    drawStreetWall(0, "#a89880");
+    drawStreetWall(W - 86, "#8f8474");
+    // Redraw sidewalks on top of wall feet near curb only — keep storefronts
+    ctx.fillStyle = "#9a9a92";
+    ctx.fillRect(0, 160, 88, 30);
+    ctx.fillRect(W - 88, 160, 88, 30);
+
+    // Street lamps
+    [[110, 240], [W - 110, 420], [120, 700], [W - 118, 960]].forEach(([lx, ly]) => {
+      ctx.fillStyle = "#2c2c2c";
+      ctx.fillRect(lx - 2, ly - 50, 4, 50);
+      ctx.beginPath();
+      ctx.arc(lx, ly - 54, 7, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(255, 220, 150, 0.75)";
+      ctx.fill();
+      const glow = ctx.createRadialGradient(lx, ly - 40, 2, lx, ly, 70);
+      glow.addColorStop(0, "rgba(255, 210, 140, 0.14)");
+      glow.addColorStop(1, "rgba(255, 210, 140, 0)");
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(lx, ly, 70, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Yellow cordon tape
+    ctx.save();
+    ctx.translate(0, H * 0.22);
+    ctx.rotate(-0.015);
+    ctx.fillStyle = "#d4b83a";
+    ctx.fillRect(100, 0, W - 200, 7);
+    ctx.fillStyle = "#1a1a1a";
+    ctx.font = "bold 10px Barlow, sans-serif";
+    for (let x = 120; x < W - 140; x += 95) ctx.fillText("POLICE", x, -3);
+    ctx.restore();
+
+    // Wooden barricade + smolder
+    const bx = W * 0.58;
+    const by = H * 0.3;
+    ctx.fillStyle = "#5a4030";
+    ctx.fillRect(bx, by, 110, 14);
+    ctx.fillStyle = "#6b4a34";
+    ctx.fillRect(bx + 8, by - 12, 95, 12);
+    ctx.fillStyle = "#4a3428";
+    ctx.fillRect(bx + 18, by + 12, 80, 10);
+    // pallet slats
+    ctx.strokeStyle = "rgba(0,0,0,0.35)";
+    for (let i = 0; i < 5; i++) {
+      ctx.beginPath();
+      ctx.moveTo(bx + 10 + i * 20, by - 12);
+      ctx.lineTo(bx + 10 + i * 20, by + 22);
+      ctx.stroke();
+    }
+    const flicker = 10 + Math.sin(state.t * 7) * 3;
+    const fire = ctx.createRadialGradient(bx + 70, by - 6, 2, bx + 70, by - 6, flicker);
+    fire.addColorStop(0, "rgba(255, 180, 60, 0.7)");
+    fire.addColorStop(0.5, "rgba(220, 80, 30, 0.35)");
+    fire.addColorStop(1, "rgba(220, 80, 30, 0)");
+    ctx.fillStyle = fire;
+    ctx.beginPath();
+    ctx.arc(bx + 70, by - 6, flicker, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawGameplayOutline(e) {
+    if (e.layer === LAYER.HOSTILE) {
+      ctx.strokeStyle = "#e05a3a";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.ellipse(0, 2, e.r + 6, e.r + 9, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      if (e.isolated) {
+        ctx.strokeStyle = "#e8c547";
+        ctx.setLineDash([4, 3]);
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.ellipse(0, 2, e.r + 11, e.r + 14, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    } else if (e.layer === LAYER.CIVIL) {
+      ctx.strokeStyle = "rgba(216, 208, 192, 0.7)";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.ellipse(0, 2, e.r + 3, e.r + 5, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (e.kind === "sergent") {
+      ctx.strokeStyle = "#e8c547";
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.ellipse(0, 2, e.r + 7, e.r + 10, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  function drawPoliceSilhouette(e) {
+    const ang = e.kind === "sergent" ? e.facing : -Math.PI / 2;
+    ctx.rotate(ang + Math.PI / 2);
+    ctx.scale(1.45, 1.45);
+
+    // Boots
+    ctx.fillStyle = "#12161c";
+    ctx.fillRect(-7, 10, 5, 9);
+    ctx.fillRect(2, 10, 5, 9);
+
+    // Legs
+    ctx.fillStyle = "#1a2436";
+    ctx.fillRect(-6, 2, 4, 10);
+    ctx.fillRect(2, 2, 4, 10);
+
+    // Torso plate
+    ctx.fillStyle = "#243a58";
+    ctx.beginPath();
+    ctx.moveTo(-10, -8);
+    ctx.lineTo(10, -8);
+    ctx.lineTo(8, 8);
+    ctx.lineTo(-8, 8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#1a2c44";
+    ctx.fillRect(-9, -6, 18, 10);
+
+    // Yellow high-vis band
+    ctx.fillStyle = "#d4b83a";
+    ctx.fillRect(-9, -1, 18, 3.5);
+    ctx.fillStyle = "#1a1a1a";
+    ctx.fillRect(-9, 0.5, 18, 0.8);
+
+    // Arms
+    ctx.fillStyle = "#1e3048";
+    ctx.fillRect(-13, -6, 4, 12);
+    ctx.fillRect(9, -6, 4, 12);
+
+    // Helmet + visor
+    ctx.fillStyle = "#2a3e5c";
+    ctx.beginPath();
+    ctx.ellipse(0, -12, 8, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#0a1018";
+    ctx.beginPath();
+    ctx.ellipse(0, -11, 6.5, 3.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#d4b83a";
+    ctx.fillRect(-6, -17, 12, 2.5);
+
+    // Riot shield
+    if (e.kind === "ally" || (e.kind === "sergent" && state.shield)) {
+      ctx.fillStyle = "#2a4a72";
+      ctx.strokeStyle = "#c9b24a";
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(11, -16);
+      ctx.lineTo(22, -12);
+      ctx.lineTo(22, 14);
+      ctx.lineTo(11, 16);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(255,255,255,0.2)";
+      ctx.strokeRect(13, -8, 7, 16);
+      ctx.fillStyle = "rgba(212,184,58,0.4)";
+      ctx.fillRect(14, -2, 5, 8);
+    }
+
+    if (e.kind === "sergent") {
+      ctx.strokeStyle = "rgba(212, 184, 58, 0.5)";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(0, -20);
+      ctx.lineTo(0, -30);
+      ctx.stroke();
+    }
+  }
+
+  function drawHostileSilhouette(e) {
+    const ang = e.facing || 0;
+    ctx.rotate(ang + Math.PI / 2);
+    ctx.scale(1.4, 1.4);
+
+    // Shoes
+    ctx.fillStyle = "#050505";
+    ctx.fillRect(-6, 12, 4.5, 6);
+    ctx.fillRect(1.5, 12, 4.5, 6);
+
+    // Pants
+    ctx.fillStyle = "#111";
+    ctx.fillRect(-5.5, 2, 4, 11);
+    ctx.fillRect(1.5, 2, 4, 11);
+
+    // Hoodie body
+    ctx.fillStyle = e.kind === "meneur" ? "#0a0a0a" : "#151515";
+    ctx.beginPath();
+    ctx.moveTo(-9, -9);
+    ctx.lineTo(9, -9);
+    ctx.lineTo(8, 7);
+    ctx.lineTo(-8, 7);
+    ctx.closePath();
+    ctx.fill();
+    // Kangaroo pocket
+    ctx.fillStyle = "#0e0e0e";
+    ctx.fillRect(-5, -1, 10, 5);
+
+    // Arms
+    ctx.fillStyle = "#121212";
+    ctx.fillRect(-12, -7, 3.5, 11);
+    ctx.fillRect(8.5, -7, 3.5, 11);
+
+    // Hood + balaclava
+    ctx.fillStyle = "#0a0a0a";
+    ctx.beginPath();
+    ctx.ellipse(0, -13, 8, 7.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#1a1a1a";
+    ctx.beginPath();
+    ctx.ellipse(0, -12, 5.5, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Eye holes
+    ctx.fillStyle = "#2a2a2a";
+    ctx.fillRect(-4, -13, 2.5, 1.8);
+    ctx.fillRect(1.5, -13, 2.5, 1.8);
+
+    if (e.kind === "lanceur" || e.kind === "meneur") {
+      ctx.fillStyle = "#1c1c1c";
+      ctx.fillRect(-13, -8, 6, 12);
+      ctx.strokeStyle = "#333";
+      ctx.strokeRect(-13, -8, 6, 12);
+    }
+
+    if (e.kind !== "frondeur") {
+      ctx.strokeStyle = "#2e2e2e";
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.moveTo(10, 0);
+      ctx.lineTo(18, -16);
       ctx.stroke();
     }
 
-    // Buildings sides
-    ctx.fillStyle = "#101820";
-    ctx.fillRect(0, 0, 70, H);
-    ctx.fillRect(W - 70, 0, 70, H);
-    ctx.fillStyle = "rgba(232,197,71,0.06)";
-    for (let y = 120; y < H; y += 70) {
-      ctx.fillRect(18, y, 28, 22);
-      ctx.fillRect(W - 46, y + 20, 28, 22);
+    if (e.kind === "meneur") {
+      ctx.fillStyle = "#e05a3a";
+      ctx.font = "bold 10px Oswald, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("★", 0, -24);
     }
-
-    // Yellow cordon tape near allies
-    ctx.save();
-    ctx.translate(0, H * 0.22);
-    ctx.rotate(-0.02);
-    ctx.fillStyle = "#e8c547";
-    ctx.fillRect(90, 0, W - 180, 6);
-    ctx.fillStyle = "#111";
-    ctx.font = "bold 11px Barlow, sans-serif";
-    for (let x = 110; x < W - 120; x += 90) {
-      ctx.fillText("POLICE", x, -4);
+    if (e.stun > 0) {
+      ctx.fillStyle = "rgba(255,255,255,0.8)";
+      ctx.font = "9px Barlow, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("STUN", 0, 24);
     }
-    ctx.restore();
+  }
 
-    // Barricade prop
-    ctx.fillStyle = "#2a2018";
-    ctx.fillRect(W * 0.62, H * 0.3, 90, 18);
-    ctx.fillStyle = "rgba(224,90,58,0.45)";
+  function drawCivilSilhouette(e) {
+    ctx.scale(1.3, 1.3);
+
+    // Shoes
+    ctx.fillStyle = "#3a322c";
+    ctx.fillRect(-5.5, 11, 4, 5);
+    ctx.fillRect(1.5, 11, 4, 5);
+
+    // Legs
+    ctx.fillStyle = "#4a5560";
+    ctx.fillRect(-4.5, 2, 3.5, 10);
+    ctx.fillRect(1, 2, 3.5, 10);
+
+    // Jacket / sweater
+    ctx.fillStyle = e.color || "#6a7a5c";
     ctx.beginPath();
-    ctx.arc(W * 0.72, H * 0.295, 14 + Math.sin(state.t * 6) * 2, 0, Math.PI * 2);
+    ctx.moveTo(-8, -8);
+    ctx.lineTo(8, -8);
+    ctx.lineTo(7, 6);
+    ctx.lineTo(-7, 6);
+    ctx.closePath();
     ctx.fill();
+
+    // Arms
+    ctx.fillStyle = e.color || "#6a7a5c";
+    ctx.fillRect(-11, -6, 3, 10);
+    ctx.fillRect(8, -6, 3, 10);
+
+    // Head
+    ctx.fillStyle = "#c4a882";
+    ctx.beginPath();
+    ctx.ellipse(0, -12, 5.5, 5.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#3d2e22";
+    ctx.beginPath();
+    ctx.ellipse(0, -14, 5.5, 3.2, 0, Math.PI, Math.PI * 2);
+    ctx.fill();
+
+    if (e.sign) {
+      ctx.fillStyle = "#f4f1ea";
+      ctx.fillRect(-16, -32, 32, 15);
+      ctx.strokeStyle = "#5a5348";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-16, -32, 32, 15);
+      ctx.fillStyle = "#222";
+      ctx.font = "7px Barlow, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(e.sign, 0, -21);
+      ctx.strokeStyle = "#6a5a48";
+      ctx.beginPath();
+      ctx.moveTo(0, -17);
+      ctx.lineTo(0, -6);
+      ctx.stroke();
+    }
   }
 
   function drawEntity(e) {
     if (e.arrested) return;
     ctx.save();
     ctx.translate(e.x, e.y);
+    drawGameplayOutline(e);
 
-    // Outline by layer
-    if (e.layer === LAYER.HOSTILE) {
-      ctx.strokeStyle = "#e05a3a";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(0, 0, e.r + 4, 0, Math.PI * 2);
-      ctx.stroke();
-      if (e.isolated) {
-        ctx.strokeStyle = "#e8c547";
-        ctx.setLineDash([4, 3]);
-        ctx.beginPath();
-        ctx.arc(0, 0, e.r + 9, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
-    } else if (e.layer === LAYER.CIVIL) {
-      ctx.strokeStyle = "rgba(216,208,192,0.55)";
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.arc(0, 0, e.r + 2, 0, Math.PI * 2);
-      ctx.stroke();
-    } else if (e.kind === "sergent") {
-      ctx.strokeStyle = "#e8c547";
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.arc(0, 0, e.r + 5, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-
-    // Body
-    ctx.fillStyle = e.color;
+    // Soft ground contact shadow
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
     ctx.beginPath();
-    ctx.arc(0, 0, e.r, 0, Math.PI * 2);
+    ctx.ellipse(0, 14, e.r * 0.9, 4, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Head / gear accents
-    if (e.layer === LAYER.POLICE) {
-      ctx.fillStyle = "#e8c547";
-      ctx.fillRect(-6, -e.r - 2, 12, 4);
-      if (e.kind === "sergent" && state.shield) {
-        ctx.fillStyle = "rgba(58,123,213,0.85)";
-        ctx.fillRect(8, -12, 8, 24);
-        ctx.strokeStyle = "#e8c547";
-        ctx.strokeRect(8, -12, 8, 24);
-      }
-    } else if (e.layer === LAYER.HOSTILE) {
-      ctx.fillStyle = "#222";
-      ctx.beginPath();
-      ctx.arc(0, -2, e.r * 0.55, 0, Math.PI * 2);
-      ctx.fill();
-      if (e.kind === "meneur") {
-        ctx.fillStyle = "#e05a3a";
-        ctx.font = "bold 10px Oswald, sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText("★", 0, -e.r - 8);
-      }
-      if (e.stun > 0) {
-        ctx.fillStyle = "rgba(255,255,255,0.7)";
-        ctx.font = "10px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText("STUN", 0, e.r + 14);
-      }
-    } else {
-      // civil clothes accent
-      ctx.fillStyle = "rgba(0,0,0,0.15)";
-      ctx.fillRect(-5, -2, 10, 8);
-      if (e.sign) {
-        ctx.fillStyle = "#f2f4f7";
-        ctx.fillRect(-16, -e.r - 22, 32, 16);
-        ctx.strokeStyle = "#333";
-        ctx.strokeRect(-16, -e.r - 22, 32, 16);
-        ctx.fillStyle = "#222";
-        ctx.font = "7px Barlow, sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText(e.sign, 0, -e.r - 11);
-      }
-    }
-
-    // Facing tick for player
-    if (e.kind === "sergent") {
-      ctx.strokeStyle = "rgba(232,197,71,0.7)";
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(Math.cos(e.facing) * 28, Math.sin(e.facing) * 28);
-      ctx.stroke();
-    }
+    ctx.save();
+    if (e.layer === LAYER.POLICE) drawPoliceSilhouette(e);
+    else if (e.layer === LAYER.HOSTILE) drawHostileSilhouette(e);
+    else drawCivilSilhouette(e);
+    ctx.restore();
 
     ctx.restore();
   }
@@ -883,19 +1160,26 @@
     ctx.save();
     ctx.font = "10px Barlow, sans-serif";
     ctx.textAlign = "left";
-    const items = [
-      ["#e05a3a", "Black Bloc"],
-      ["#d8d0c0", "Civils (protégés)"],
-      ["#e8c547", "Vous / cordon"],
+    const y0 = H - 150;
+    // mini silhouettes
+    const samples = [
+      { label: "Black Bloc", stroke: "#e05a3a", fill: "#141414" },
+      { label: "Civils (protégés)", stroke: "rgba(216,208,192,0.8)", fill: "#8b6b5c" },
+      { label: "Vous / cordon", stroke: "#d4b83a", fill: "#1e2f4a" },
     ];
-    let y = H - 150;
-    items.forEach(([c, t], i) => {
-      ctx.fillStyle = c;
+    samples.forEach((s, i) => {
+      const y = y0 + i * 18;
+      ctx.strokeStyle = s.stroke;
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(24, y + i * 16, 5, 0, Math.PI * 2);
+      ctx.ellipse(22, y, 8, 10, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = s.fill;
+      ctx.beginPath();
+      ctx.ellipse(22, y, 5, 7, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = "rgba(242,244,247,0.65)";
-      ctx.fillText(t, 36, y + i * 16 + 3);
+      ctx.fillStyle = "rgba(242,244,247,0.75)";
+      ctx.fillText(s.label, 36, y + 3);
     });
     ctx.restore();
   }

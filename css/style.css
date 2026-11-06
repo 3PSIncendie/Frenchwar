@@ -1,15 +1,15 @@
 :root {
-  --navy: #0a1420;
-  --navy-2: #121c2c;
-  --asphalt: #1a2330;
-  --yellow: #e8c547;
-  --yellow-dim: #b8962e;
-  --blue: #3a7bd5;
-  --blue-deep: #1e4a8c;
+  --navy: #121820;
+  --navy-2: #1a222c;
+  --asphalt: #3a3d42;
+  --yellow: #d4b83a;
+  --yellow-dim: #a89030;
+  --blue: #3a6a9a;
+  --blue-deep: #2a4a6e;
   --hostile: #e05a3a;
   --civil: #d8d0c0;
-  --green: #5cbc7a;
-  --danger: #c43b3b;
+  --green: #5a9a6e;
+  --danger: #b04040;
   --white: #f2f4f7;
   --muted: #8a93a3;
   --font-display: "Oswald", Impact, sans-serif;
@@ -240,8 +240,8 @@ html, body {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse at 50% 20%, rgba(58,123,213,.18), transparent 55%),
-    linear-gradient(180deg, #0c1522 0%, #152032 40%, #0a1018 100%);
+    radial-gradient(ellipse at 50% 0%, rgba(100,110,120,.25), transparent 50%),
+    linear-gradient(180deg, #4a5564 0%, #3a4048 28%, #2a3038 55%, #1a1e24 100%);
   z-index: 0;
 }
 .title-bg::after {
@@ -249,8 +249,10 @@ html, body {
   position: absolute;
   inset: 0;
   background:
-    repeating-linear-gradient(-28deg, transparent, transparent 40px, rgba(232,197,71,.04) 40px, rgba(232,197,71,.04) 42px);
-  opacity: .7;
+    linear-gradient(90deg, rgba(168,152,128,.15) 0 14%, transparent 14% 86%, rgba(143,132,116,.15) 86%),
+    repeating-linear-gradient(0deg, transparent, transparent 48px, rgba(0,0,0,.04) 48px, rgba(0,0,0,.04) 49px);
+  opacity: .9;
+  pointer-events: none;
 }
 
 .title-content {
