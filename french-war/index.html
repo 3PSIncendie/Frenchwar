@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>FRENCH WAR — Cordon</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Barlow:wght@400;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="game" width="720" height="1280"></canvas>
+
+    <div id="hud" class="hidden">
+      <div class="hud-top">
+        <div class="hud-block">
+          <div class="hud-label"><span class="dot yellow"></span> OBJECTIF</div>
+          <div id="hud-objectif">Arrêter meneur + 4 lanceurs</div>
+          <div id="hud-progress">0/4 · Meneur —</div>
+        </div>
+        <div class="hud-block center">
+          <div class="hud-label"><span class="dot blue"></span> ORDRE</div>
+          <div class="bar"><div id="bar-ordre"></div></div>
+        </div>
+        <div class="hud-block right">
+          <div class="hud-label"><span class="dot green"></span> PROPRETÉ</div>
+          <div id="hud-proprete">100</div>
+        </div>
+      </div>
+      <div id="prompt" class="prompt"></div>
+      <div id="civil-alert" class="civil-alert hidden">
+        <div class="civil-icon">!</div>
+        <div>
+          <strong>CIVIL EN ZONE</strong>
+          <span id="civil-alert-sub">Outil désarmé — isolez d’abord</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="controls" class="hidden">
+      <div id="stick" class="stick">
+        <div id="stick-knob" class="stick-knob"></div>
+      </div>
+      <div class="actions">
+        <button type="button" id="btn-bouclier" class="act" data-tool="bouclier">
+          <span class="act-icon">🛡</span>
+          <span class="act-label">BOUCLIER</span>
+        </button>
+        <button type="button" id="btn-flash" class="act act-flash" data-tool="flash">
+          <span class="act-icon">⚡</span>
+          <span class="act-label">FLASH</span>
+        </button>
+        <button type="button" id="btn-arrest" class="act act-arrest" data-tool="arrest">
+          <span class="act-icon">⛓</span>
+          <span class="act-label">ARREST.</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="screen-title" class="screen">
+      <div class="title-bg"></div>
+      <div class="title-content">
+        <div class="brand">
+          <div class="brand-fr">FRENCH</div>
+          <div class="brand-war">WAR</div>
+          <div class="brand-sub">Cordon — confrontation ciblée</div>
+        </div>
+        <button type="button" id="btn-jouer" class="cta" onclick="window.FrenchWar&&FrenchWar.goBrief()">/// JOUER ///</button>
+        <p class="hint">Place République · 1 secteur · non-létal</p>
+        <p class="rules-line">Manifestants = jamais ciblables</p>
+      </div>
+    </div>
+
+    <div id="screen-brief" class="screen hidden">
+      <div class="panel">
+        <h2>BRIEF RADIO</h2>
+        <p class="radio">« Sergent, Place République. Isolez le Black Bloc. Cordons jaunes. Civils hors zone d’effet — faute critique = abort. »</p>
+        <ul>
+          <li>Arrêter le <strong>meneur</strong> + <strong>4 lanceurs</strong></li>
+          <li>Outils : Bouclier · Flash · Arrestation</li>
+          <li>Civil dans le cône = auto-cancel + faute</li>
+        </ul>
+        <button type="button" id="btn-deploy" class="cta" onclick="window.FrenchWar&&FrenchWar.startPlay()">DÉPLOYER</button>
+      </div>
+    </div>
+
+    <div id="screen-win" class="screen hidden">
+      <div class="panel gold">
+        <div class="eyebrow">FRENCH WAR</div>
+        <h1>VICTOIRE</h1>
+        <div id="win-grade" class="grade">S</div>
+        <div class="stats" id="win-stats"></div>
+        <button type="button" id="btn-win-again" class="cta">CONTINUER</button>
+        <p class="footer-motto">HONNEUR · DISCIPLINE · MISSION</p>
+      </div>
+    </div>
+
+    <div id="screen-lose" class="screen hidden">
+      <div class="panel danger">
+        <div class="eyebrow">FRENCH WAR</div>
+        <div class="abort">MISSION ABORT</div>
+        <h1>DÉFAITE</h1>
+        <div class="reason">
+          <div class="reason-label">RAISON</div>
+          <p id="lose-reason">Faute civile critique</p>
+        </div>
+        <div class="tip">
+          <div class="tip-label">CONSEIL</div>
+          <p id="lose-tip">Isoler avant de lancer.</p>
+        </div>
+        <button type="button" id="btn-retry" class="cta danger-cta">RECOMMENCER</button>
+        <button type="button" id="btn-menu" class="cta ghost">MENU</button>
+      </div>
+    </div>
+  </div>
+  <script src="js/game.js"></script>
+</body>
+</html>
