@@ -10,6 +10,13 @@ cd /agent/french-war && python3 -m http.server 8765 --bind 127.0.0.1
 
 Ouvrir `http://127.0.0.1:8765/`
 
+## Hors-ligne
+
+- Sur l’écran titre : **TÉLÉCHARGER HORS-LIGNE** → fichier unique `french-war.html` (ouvrir dans le navigateur, sans réseau).
+- Ou ouvrir directement `french-war-offline.html`.
+- Après une visite en ligne, le service worker garde aussi le site jouable hors connexion.
+- Régénérer le pack : `python3 scripts/build-offline.py`
+
 ## Contrôles
 
 | Input | Action |

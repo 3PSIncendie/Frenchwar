@@ -1,0 +1,1946 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#121820" />
+  <title>FRENCH WAR — Cordon (hors-ligne)</title>
+  <style>
+:root {
+  --navy: #121820;
+  --navy-2: #1a222c;
+  --asphalt: #3a3d42;
+  --yellow: #d4b83a;
+  --yellow-dim: #a89030;
+  --blue: #3a6a9a;
+  --blue-deep: #2a4a6e;
+  --hostile: #e05a3a;
+  --civil: #d8d0c0;
+  --green: #5a9a6e;
+  --danger: #b04040;
+  --white: #f2f4f7;
+  --muted: #8a93a3;
+  /* Polices système uniquement — zéro dépendance réseau */
+  --font-display: Impact, "Arial Narrow", "Helvetica Neue Condensed", sans-serif;
+  --font-ui: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  color: var(--white);
+  font-family: var(--font-ui);
+  touch-action: none;
+  user-select: none;
+}
+
+#app {
+  position: relative;
+  width: min(100vw, calc(100vh * 9 / 16));
+  height: min(100vh, calc(100vw * 16 / 9));
+  margin: 0 auto;
+  background: var(--navy);
+  overflow: hidden;
+}
+
+#game {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--asphalt);
+}
+
+.hidden { display: none !important; }
+
+/* —— HUD —— */
+#hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.hud-top {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 0.9fr;
+  gap: 8px;
+  padding: max(10px, env(safe-area-inset-top)) 12px 8px;
+  background: linear-gradient(180deg, rgba(5,10,18,.92), rgba(5,10,18,.35) 85%, transparent);
+}
+
+.hud-label {
+  font-size: 10px;
+  letter-spacing: .14em;
+  color: var(--muted);
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.dot.yellow { background: var(--yellow); }
+.dot.blue { background: var(--blue); }
+.dot.green { background: var(--green); }
+
+#hud-objectif { font-size: 12px; font-weight: 700; line-height: 1.2; }
+#hud-progress { font-size: 11px; color: var(--yellow); margin-top: 2px; }
+.hud-block.right { text-align: right; }
+.hud-block.center { text-align: center; }
+#hud-proprete { font-size: 22px; font-weight: 700; color: var(--green); font-family: var(--font-display); }
+
+.bar {
+  height: 8px;
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(58,123,213,.4);
+  margin-top: 6px;
+  overflow: hidden;
+}
+#bar-ordre {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, var(--blue-deep), var(--blue));
+  transition: width .2s linear;
+}
+
+.prompt {
+  position: absolute;
+  left: 50%;
+  bottom: 28%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  letter-spacing: .08em;
+  color: var(--blue);
+  text-align: center;
+  text-shadow: 0 1px 4px #000;
+  min-height: 1.2em;
+}
+
+.civil-alert {
+  position: absolute;
+  left: 50%;
+  top: 22%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: rgba(120, 16, 16, .88);
+  border: 1px solid var(--danger);
+  padding: 10px 14px;
+  max-width: 86%;
+  animation: pulseAlert .7s ease-in-out infinite alternate;
+}
+.civil-alert strong { display: block; font-size: 14px; letter-spacing: .1em; }
+.civil-alert span { font-size: 11px; color: #f5c8c8; }
+.civil-icon {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 2px solid #fff; display: grid; place-items: center;
+  font-weight: 700; font-size: 18px; flex-shrink: 0;
+}
+@keyframes pulseAlert {
+  from { box-shadow: 0 0 0 0 rgba(196,59,59,.4); }
+  to { box-shadow: 0 0 18px 2px rgba(196,59,59,.55); }
+}
+
+/* —— Controls —— */
+#controls {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.stick {
+  position: absolute;
+  left: 18px;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  width: 118px;
+  height: 118px;
+  border-radius: 50%;
+  background: rgba(20, 30, 45, .55);
+  border: 2px solid rgba(232, 197, 71, .35);
+  pointer-events: auto;
+  touch-action: none;
+}
+.stick-knob {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 48px; height: 48px;
+  margin: -24px 0 0 -24px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #4a6a9a, #1a2a40);
+  border: 2px solid rgba(232, 197, 71, .55);
+  box-shadow: 0 4px 12px rgba(0,0,0,.45);
+  pointer-events: none;
+}
+
+.actions {
+  position: absolute;
+  right: 14px;
+  bottom: max(22px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: auto;
+}
+
+.act {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 2px solid rgba(58,123,213,.7);
+  background: radial-gradient(circle at 35% 30%, #2a4a78, #122038);
+  color: var(--white);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(0,0,0,.4);
+}
+.act:active, .act.active { transform: scale(.94); border-color: var(--yellow); }
+.act.disabled { opacity: .38; filter: grayscale(.4); }
+.act-flash { border-color: rgba(92,188,122,.7); background: radial-gradient(circle at 35% 30%, #2a5a48, #122830); }
+.act-arrest { border-color: rgba(232,197,71,.55); background: radial-gradient(circle at 35% 30%, #4a4a30, #222018); }
+.act-icon { font-size: 18px; line-height: 1; }
+.act-label { font-size: 9px; letter-spacing: .06em; font-weight: 700; }
+.act .cd {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(0,0,0,.45);
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* —— Screens —— */
+.screen {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: linear-gradient(180deg, rgba(6,10,18,.72), rgba(6,10,18,.92));
+  pointer-events: auto;
+}
+.screen .cta,
+.screen button {
+  pointer-events: auto;
+  position: relative;
+  z-index: 2;
+}
+
+.title-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(100,110,120,.25), transparent 50%),
+    linear-gradient(180deg, #4a5564 0%, #3a4048 28%, #2a3038 55%, #1a1e24 100%);
+  z-index: 0;
+}
+.title-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(168,152,128,.15) 0 14%, transparent 14% 86%, rgba(143,132,116,.15) 86%),
+    repeating-linear-gradient(0deg, transparent, transparent 48px, rgba(0,0,0,.04) 48px, rgba(0,0,0,.04) 49px);
+  opacity: .9;
+  pointer-events: none;
+}
+
+.title-content {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.brand-fr {
+  font-family: var(--font-display);
+  font-size: clamp(52px, 14vw, 78px);
+  font-weight: 700;
+  letter-spacing: .04em;
+  line-height: .9;
+  color: var(--white);
+  text-shadow: 0 2px 0 #000, 0 8px 24px rgba(0,0,0,.5);
+}
+.brand-war {
+  font-family: var(--font-display);
+  font-size: clamp(58px, 16vw, 88px);
+  font-weight: 700;
+  letter-spacing: .06em;
+  line-height: .9;
+  color: var(--yellow);
+  text-shadow: 0 2px 0 #5a4310, 0 10px 28px rgba(0,0,0,.55);
+  margin-bottom: 8px;
+}
+.brand-sub {
+  font-size: 13px;
+  letter-spacing: .16em;
+  text-transform: lowercase;
+  color: var(--civil);
+  border-top: 1px solid rgba(232,197,71,.35);
+  border-bottom: 1px solid rgba(232,197,71,.35);
+  padding: 8px 0;
+  width: min(280px, 80%);
+  margin: 0 auto;
+}
+
+.cta {
+  margin-top: 18px;
+  min-width: 220px;
+  padding: 16px 28px;
+  font-family: var(--font-display);
+  font-size: 22px;
+  letter-spacing: .14em;
+  color: var(--yellow);
+  background: linear-gradient(180deg, #1c2838, #101820);
+  border: 2px solid var(--yellow);
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0,0,0,.45);
+}
+.cta:active { transform: scale(.98); }
+.cta.danger-cta { color: #fff; border-color: var(--danger); background: linear-gradient(180deg, #4a1a1a, #201010); }
+.cta.ghost {
+  color: var(--muted);
+  border-color: rgba(255,255,255,.2);
+  background: transparent;
+  font-size: 16px;
+  margin-top: 10px;
+  min-width: 180px;
+  padding: 12px 20px;
+}
+a.cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+.cta.download {
+  margin-top: 8px;
+  font-size: 14px;
+  letter-spacing: .1em;
+  color: var(--civil);
+  border-color: rgba(216, 208, 192, .45);
+}
+
+.hint { color: var(--muted); font-size: 12px; letter-spacing: .06em; }
+.download-hint { margin-top: -6px; font-size: 11px; opacity: .85; }
+.rules-line {
+  margin-top: 8px;
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--hostile);
+}
+
+.panel {
+  width: min(360px, 100%);
+  background: linear-gradient(180deg, rgba(14,22,36,.96), rgba(8,12,20,.98));
+  border: 1px solid rgba(232,197,71,.35);
+  padding: 28px 22px;
+  text-align: center;
+}
+.panel.gold { border-color: var(--yellow); }
+.panel.danger { border-color: var(--danger); }
+.panel h1 {
+  font-family: var(--font-display);
+  font-size: 48px;
+  letter-spacing: .08em;
+  margin: 8px 0 16px;
+}
+.panel.danger h1 { color: var(--danger); }
+.panel h2 {
+  font-family: var(--font-display);
+  letter-spacing: .16em;
+  color: var(--yellow);
+  margin-bottom: 14px;
+}
+.panel .radio {
+  text-align: left;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--civil);
+  margin-bottom: 14px;
+  padding: 12px;
+  background: rgba(58,123,213,.08);
+  border-left: 3px solid var(--blue);
+}
+.panel ul {
+  text-align: left;
+  list-style: none;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
+  margin-bottom: 18px;
+}
+.panel ul li::before { content: "▸ "; color: var(--yellow); }
+.eyebrow {
+  font-size: 11px;
+  letter-spacing: .2em;
+  color: var(--yellow);
+  margin-bottom: 4px;
+}
+.grade {
+  width: 84px; height: 84px;
+  margin: 0 auto 16px;
+  border: 3px solid var(--yellow);
+  display: grid; place-items: center;
+  font-family: var(--font-display);
+  font-size: 48px;
+  color: var(--yellow);
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+  background: rgba(232,197,71,.08);
+}
+.stats {
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.8;
+  margin-bottom: 18px;
+  color: var(--civil);
+  border: 1px solid rgba(232,197,71,.25);
+  padding: 12px 14px;
+}
+.stats .row { display: flex; justify-content: space-between; gap: 8px; }
+.stats .ok { color: var(--green); }
+.abort {
+  color: var(--danger);
+  letter-spacing: .2em;
+  font-size: 12px;
+  font-weight: 700;
+}
+.reason, .tip { text-align: left; margin: 12px 0; padding: 10px 12px; }
+.reason { background: rgba(196,59,59,.12); border-left: 3px solid var(--danger); }
+.tip { background: rgba(58,123,213,.12); border-left: 3px solid var(--blue); }
+.reason-label, .tip-label {
+  font-size: 10px;
+  letter-spacing: .16em;
+  margin-bottom: 4px;
+}
+.reason-label { color: var(--danger); }
+.tip-label { color: var(--blue); }
+.footer-motto {
+  margin-top: 14px;
+  font-size: 10px;
+  letter-spacing: .18em;
+  color: var(--muted);
+}
+
+  </style>
+</head>
+<body>
+  <div id="app">
+    <canvas id="game" width="720" height="1280"></canvas>
+
+    <div id="hud" class="hidden">
+      <div class="hud-top">
+        <div class="hud-block">
+          <div class="hud-label"><span class="dot yellow"></span> OBJECTIF</div>
+          <div id="hud-objectif">Arrêter meneur + 4 lanceurs</div>
+          <div id="hud-progress">0/4 · Meneur —</div>
+        </div>
+        <div class="hud-block center">
+          <div class="hud-label"><span class="dot blue"></span> ORDRE</div>
+          <div class="bar"><div id="bar-ordre"></div></div>
+        </div>
+        <div class="hud-block right">
+          <div class="hud-label"><span class="dot green"></span> PROPRETÉ</div>
+          <div id="hud-proprete">100</div>
+        </div>
+      </div>
+      <div id="prompt" class="prompt"></div>
+      <div id="civil-alert" class="civil-alert hidden">
+        <div class="civil-icon">!</div>
+        <div>
+          <strong>CIVIL EN ZONE</strong>
+          <span id="civil-alert-sub">Outil désarmé — isolez d’abord</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="controls" class="hidden">
+      <div id="stick" class="stick">
+        <div id="stick-knob" class="stick-knob"></div>
+      </div>
+      <div class="actions">
+        <button type="button" id="btn-bouclier" class="act" data-tool="bouclier">
+          <span class="act-icon">🛡</span>
+          <span class="act-label">BOUCLIER</span>
+        </button>
+        <button type="button" id="btn-flash" class="act act-flash" data-tool="flash">
+          <span class="act-icon">⚡</span>
+          <span class="act-label">FLASH</span>
+        </button>
+        <button type="button" id="btn-arrest" class="act act-arrest" data-tool="arrest">
+          <span class="act-icon">⛓</span>
+          <span class="act-label">ARREST.</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="screen-title" class="screen">
+      <div class="title-bg"></div>
+      <div class="title-content">
+        <div class="brand">
+          <div class="brand-fr">FRENCH</div>
+          <div class="brand-war">WAR</div>
+          <div class="brand-sub">Cordon — confrontation ciblée</div>
+        </div>
+        <button type="button" id="btn-jouer" class="cta" onclick="window.FrenchWar&&FrenchWar.goBrief()">/// JOUER ///</button>
+<p class="hint">Place République · 1 secteur · non-létal</p>
+        <p class="hint download-hint">Un seul fichier HTML — ouvrir sans connexion</p>
+        <p class="rules-line">Manifestants = jamais ciblables</p>
+      </div>
+    </div>
+
+    <div id="screen-brief" class="screen hidden">
+      <div class="panel">
+        <h2>BRIEF RADIO</h2>
+        <p class="radio">« Sergent, Place République. Isolez le Black Bloc. Cordons jaunes. Civils hors zone d’effet — faute critique = abort. »</p>
+        <ul>
+          <li>Arrêter le <strong>meneur</strong> + <strong>4 lanceurs</strong></li>
+          <li>Outils : Bouclier · Flash · Arrestation</li>
+          <li>Civil dans le cône = auto-cancel + faute</li>
+        </ul>
+        <button type="button" id="btn-deploy" class="cta" onclick="window.FrenchWar&&FrenchWar.startPlay()">DÉPLOYER</button>
+      </div>
+    </div>
+
+    <div id="screen-win" class="screen hidden">
+      <div class="panel gold">
+        <div class="eyebrow">FRENCH WAR</div>
+        <h1>VICTOIRE</h1>
+        <div id="win-grade" class="grade">S</div>
+        <div class="stats" id="win-stats"></div>
+        <button type="button" id="btn-win-again" class="cta">CONTINUER</button>
+        <p class="footer-motto">HONNEUR · DISCIPLINE · MISSION</p>
+      </div>
+    </div>
+
+    <div id="screen-lose" class="screen hidden">
+      <div class="panel danger">
+        <div class="eyebrow">FRENCH WAR</div>
+        <div class="abort">MISSION ABORT</div>
+        <h1>DÉFAITE</h1>
+        <div class="reason">
+          <div class="reason-label">RAISON</div>
+          <p id="lose-reason">Faute civile critique</p>
+        </div>
+        <div class="tip">
+          <div class="tip-label">CONSEIL</div>
+          <p id="lose-tip">Isoler avant de lancer.</p>
+        </div>
+        <button type="button" id="btn-retry" class="cta danger-cta">RECOMMENCER</button>
+        <button type="button" id="btn-menu" class="cta ghost">MENU</button>
+      </div>
+    </div>
+  </div>
+<script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js").catch(() => {});
+      });
+    }
+  </script>
+
+  <script>
+(() => {
+  "use strict";
+
+  const W = 720;
+  const H = 1280;
+  const LAYER = { CIVIL: "civil", HOSTILE: "hostile", POLICE: "police" };
+
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+
+  const el = {
+    hud: document.getElementById("hud"),
+    controls: document.getElementById("controls"),
+    objectif: document.getElementById("hud-objectif"),
+    progress: document.getElementById("hud-progress"),
+    proprete: document.getElementById("hud-proprete"),
+    barOrdre: document.getElementById("bar-ordre"),
+    prompt: document.getElementById("prompt"),
+    civilAlert: document.getElementById("civil-alert"),
+    civilAlertSub: document.getElementById("civil-alert-sub"),
+    stick: document.getElementById("stick"),
+    knob: document.getElementById("stick-knob"),
+    btnBouclier: document.getElementById("btn-bouclier"),
+    btnFlash: document.getElementById("btn-flash"),
+    btnArrest: document.getElementById("btn-arrest"),
+    title: document.getElementById("screen-title"),
+    brief: document.getElementById("screen-brief"),
+    win: document.getElementById("screen-win"),
+    lose: document.getElementById("screen-lose"),
+    winGrade: document.getElementById("win-grade"),
+    winStats: document.getElementById("win-stats"),
+    loseReason: document.getElementById("lose-reason"),
+    loseTip: document.getElementById("lose-tip"),
+  };
+
+  const state = {
+    mode: "title", // title | brief | play | win | lose
+    t: 0,
+    dt: 0,
+    entities: [],
+    player: null,
+    allies: [],
+    stick: { active: false, id: null, nx: 0, ny: 0, mx: 0, my: 0 },
+    shield: false,
+    flashCd: 0,
+    arrestCd: 0,
+    flashBurst: 0,
+    ordre: 100,
+    proprete: 100,
+    fautesMineures: 0,
+    arrestLanceurs: 0,
+    arrestMeneur: false,
+    targetArrests: 4,
+    timeLeft: 150,
+    prompt: "",
+    promptT: 0,
+    civilAlertT: 0,
+    particles: [],
+    projectiles: [],
+    loseReason: "",
+    loseTip: "",
+    score: 0,
+    camY: 0,
+  };
+
+  function rand(a, b) {
+    return a + Math.random() * (b - a);
+  }
+  function clamp(v, a, b) {
+    return Math.max(a, Math.min(b, v));
+  }
+  function dist(a, b) {
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    return Math.hypot(dx, dy);
+  }
+  function ang(a, b) {
+    return Math.atan2(b.y - a.y, b.x - a.x);
+  }
+
+  function showScreen(name) {
+    el.title.classList.toggle("hidden", name !== "title");
+    el.brief.classList.toggle("hidden", name !== "brief");
+    el.win.classList.toggle("hidden", name !== "win");
+    el.lose.classList.toggle("hidden", name !== "lose");
+    const playing = name === "play";
+    el.hud.classList.toggle("hidden", !playing);
+    el.controls.classList.toggle("hidden", !playing);
+  }
+
+  function setPrompt(msg, dur = 1.6) {
+    state.prompt = msg;
+    state.promptT = dur;
+    el.prompt.textContent = msg;
+  }
+
+  function showCivilAlert(sub) {
+    state.civilAlertT = 1.4;
+    el.civilAlertSub.textContent = sub;
+    el.civilAlert.classList.remove("hidden");
+  }
+
+  function addParticle(x, y, color, life = 0.5) {
+    state.particles.push({
+      x, y,
+      vx: rand(-40, 40),
+      vy: rand(-60, -10),
+      life, max: life,
+      color,
+      r: rand(2, 5),
+    });
+  }
+
+  function makeEntity(opts) {
+    return {
+      id: Math.random().toString(36).slice(2),
+      x: opts.x,
+      y: opts.y,
+      r: opts.r || 14,
+      vx: 0,
+      vy: 0,
+      layer: opts.layer,
+      kind: opts.kind,
+      hp: opts.hp || 1,
+      stun: 0,
+      facing: opts.facing || -Math.PI / 2,
+      speed: opts.speed || 70,
+      throwCd: rand(1.5, 3.5),
+      isolated: false,
+      arrested: false,
+      color: opts.color,
+      sign: opts.sign || null,
+      homeX: opts.x,
+      homeY: opts.y,
+      wanderT: rand(0, 2),
+    };
+  }
+
+  function spawnLevel() {
+    state.entities = [];
+    state.allies = [];
+    state.particles = [];
+    state.projectiles = [];
+    state.ordre = 100;
+    state.proprete = 100;
+    state.fautesMineures = 0;
+    state.arrestLanceurs = 0;
+    state.arrestMeneur = false;
+    state.timeLeft = 150;
+    state.flashCd = 0;
+    state.arrestCd = 0;
+    state.flashBurst = 0;
+    state.shield = false;
+    state.civilAlertT = 0;
+    state.camY = 0;
+    el.civilAlert.classList.add("hidden");
+
+    const player = makeEntity({
+      x: W / 2,
+      y: H * 0.72,
+      layer: LAYER.POLICE,
+      kind: "sergent",
+      r: 16,
+      speed: 145,
+      color: "#2a4a7a",
+    });
+    state.player = player;
+    state.entities.push(player);
+
+    for (let i = 0; i < 5; i++) {
+      const a = makeEntity({
+        x: W * 0.28 + i * 55,
+        y: H * 0.18,
+        layer: LAYER.POLICE,
+        kind: "ally",
+        r: 13,
+        speed: 40,
+        color: "#1e3a62",
+      });
+      state.allies.push(a);
+      state.entities.push(a);
+    }
+
+    const signs = ["DIGNITÉ", "JUSTICE", "AVENIR", "NON À…", "ÉQUITÉ"];
+    for (let i = 0; i < 18; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      const c = makeEntity({
+        x: W / 2 + side * rand(70, 250) + rand(-20, 20),
+        y: rand(H * 0.28, H * 0.88),
+        layer: LAYER.CIVIL,
+        kind: "civil",
+        r: 12,
+        speed: rand(18, 36),
+        color: ["#5c6b7a", "#8b6b5c", "#6a7a5c", "#7a6a78", "#4a5a68", "#9a7a5a"][i % 6],
+        sign: Math.random() < 0.45 ? signs[i % signs.length] : null,
+      });
+      state.entities.push(c);
+    }
+
+    for (let i = 0; i < 4; i++) {
+      const h = makeEntity({
+        x: rand(W * 0.55, W * 0.88),
+        y: rand(H * 0.32, H * 0.62),
+        layer: LAYER.HOSTILE,
+        kind: "lanceur",
+        r: 14,
+        speed: rand(55, 80),
+        color: "#1a1a1a",
+        hp: 1,
+      });
+      state.entities.push(h);
+    }
+
+    const meneur = makeEntity({
+      x: W * 0.72,
+      y: H * 0.38,
+      layer: LAYER.HOSTILE,
+      kind: "meneur",
+      r: 16,
+      speed: 90,
+      color: "#0d0d0d",
+      hp: 1,
+    });
+    state.entities.push(meneur);
+
+    for (let i = 0; i < 3; i++) {
+      const h = makeEntity({
+        x: rand(W * 0.15, W * 0.45),
+        y: rand(H * 0.35, H * 0.55),
+        layer: LAYER.HOSTILE,
+        kind: "frondeur",
+        r: 13,
+        speed: rand(70, 100),
+        color: "#151515",
+      });
+      state.entities.push(h);
+    }
+
+    setPrompt("Identifier les hostiles (contour orange)", 2.5);
+  }
+
+  function hostilesAlive() {
+    return state.entities.filter(
+      (e) => e.layer === LAYER.HOSTILE && !e.arrested
+    );
+  }
+
+  function civilsNear(x, y, R) {
+    return state.entities.filter(
+      (e) => e.layer === LAYER.CIVIL && dist(e, { x, y }) < R
+    );
+  }
+
+  function nearestHostile(from, maxR = 120) {
+    let best = null;
+    let bestD = maxR;
+    for (const e of hostilesAlive()) {
+      const d = dist(from, e);
+      if (d < bestD) {
+        bestD = d;
+        best = e;
+      }
+    }
+    return best;
+  }
+
+  /** Soft-lock: NEVER returns a civil. */
+  function softLockTarget(from, facing, coneHalf = 0.7, range = 150) {
+    let best = null;
+    let bestScore = Infinity;
+    for (const e of hostilesAlive()) {
+      if (e.layer === LAYER.CIVIL) continue;
+      const d = dist(from, e);
+      if (d > range) continue;
+      const a = ang(from, e);
+      let da = Math.abs(Math.atan2(Math.sin(a - facing), Math.cos(a - facing)));
+      if (da > coneHalf) continue;
+      const score = d + da * 40;
+      if (score < bestScore) {
+        bestScore = score;
+        best = e;
+      }
+    }
+    return best;
+  }
+
+  function coneHasCivil(from, facing, coneHalf = 0.75, range = 140) {
+    for (const e of state.entities) {
+      if (e.layer !== LAYER.CIVIL) continue;
+      const d = dist(from, e);
+      if (d > range) continue;
+      const a = ang(from, e);
+      let da = Math.abs(Math.atan2(Math.sin(a - facing), Math.cos(a - facing)));
+      if (da <= coneHalf) return e;
+    }
+    return null;
+  }
+
+  function isIsolated(hostile, R = 55) {
+    return civilsNear(hostile.x, hostile.y, R).length === 0;
+  }
+
+  function applyMinorFault(msg) {
+    state.fautesMineures += 1;
+    state.proprete = clamp(state.proprete - 12, 0, 100);
+    showCivilAlert(msg);
+    setPrompt("FAUTE MINEURE — isolez avant d’agir", 2);
+  }
+
+  function criticalFault(reason, tip) {
+    state.loseReason = reason;
+    state.loseTip = tip;
+    endLose();
+  }
+
+  function endWin() {
+    const bonus = Math.floor(state.timeLeft * 4);
+    const raw =
+      state.arrestLanceurs * 100 +
+      (state.arrestMeneur ? 500 : 0) +
+      bonus;
+    state.score = Math.max(
+      0,
+      Math.floor(raw * (state.proprete / 100) - state.fautesMineures * 150)
+    );
+    let grade = "C";
+    if (state.proprete >= 95 && state.timeLeft > 40) grade = "S";
+    else if (state.proprete >= 85) grade = "A";
+    else if (state.proprete >= 70) grade = "B";
+    el.winGrade.textContent = grade;
+    el.winStats.innerHTML = `
+      <div class="row"><span>ARRESTATIONS</span><span class="ok">${state.arrestLanceurs}/4 lanceurs</span></div>
+      <div class="row"><span>MENEUR</span><span class="ok">${state.arrestMeneur ? "1/1" : "0/1"}</span></div>
+      <div class="row"><span>PROPRETÉ</span><span class="ok">${Math.round(state.proprete)} %</span></div>
+      <div class="row"><span>SCORE FINAL</span><span>${state.score}</span></div>
+    `;
+    state.mode = "win";
+    showScreen("win");
+  }
+
+  function endLose() {
+    el.loseReason.textContent = state.loseReason;
+    el.loseTip.textContent = state.loseTip;
+    state.mode = "lose";
+    showScreen("lose");
+  }
+
+  function checkWin() {
+    if (state.arrestLanceurs >= state.targetArrests && state.arrestMeneur) {
+      endWin();
+    }
+  }
+
+  /* —— Tools —— */
+  function useBouclier(down) {
+    state.shield = !!down;
+    if (down) setPrompt("Bouclier levé — parade active", 0.8);
+  }
+
+  function useFlash() {
+    if (state.flashCd > 0 || state.mode !== "play") return;
+    const p = state.player;
+    const civil = coneHasCivil(p, p.facing, 0.8, 145);
+    if (civil) {
+      // Auto-cancel — never hits civil. Minor fault for attempting.
+      applyMinorFault("Flash annulé — civil dans le cône");
+      state.flashCd = 1.2;
+      // If somehow overlapping too hard (critical): player "knocked" civil
+      if (dist(p, civil) < 28) {
+        criticalFault(
+          "Faute civile critique — civil en zone d’effet.",
+          "Isoler avant de lancer."
+        );
+        return;
+      }
+      return;
+    }
+
+    state.flashCd = 4.5;
+    state.flashBurst = 0.25;
+    setPrompt("FLASH — stun hostiles", 1);
+
+    for (const e of hostilesAlive()) {
+      const d = dist(p, e);
+      if (d > 150) continue;
+      const a = ang(p, e);
+      let da = Math.abs(Math.atan2(Math.sin(a - p.facing), Math.cos(a - p.facing)));
+      if (da > 0.85) continue;
+      e.stun = Math.max(e.stun, 2.4);
+      e.vx *= 0.2;
+      e.vy *= 0.2;
+      for (let i = 0; i < 6; i++) addParticle(e.x, e.y, "#fff8c8", 0.4);
+    }
+    // Push civils laterally out of corridor (never crush)
+    for (const c of state.entities.filter((e) => e.layer === LAYER.CIVIL)) {
+      const d = dist(p, c);
+      if (d < 160) {
+        const side = c.x < p.x ? -1 : 1;
+        c.vx += side * 90;
+        c.vy -= 20;
+      }
+    }
+  }
+
+  function useArrest() {
+    if (state.arrestCd > 0 || state.mode !== "play") return;
+    const p = state.player;
+    const target = softLockTarget(p, p.facing, 1.0, 70);
+    if (!target) {
+      // Check if a civil is what they'd "want" — ignore soft-lock, tip only
+      const nearCivil = civilsNear(p.x, p.y, 50)[0];
+      if (nearCivil) {
+        showCivilAlert("Impossible — civil trop proche");
+        setPrompt("Pas de soft-lock sur civil", 1.4);
+      } else {
+        setPrompt("Aucun hostile isolable à portée", 1.2);
+      }
+      return;
+    }
+
+    if (!isIsolated(target, 58)) {
+      applyMinorFault("Arrestation impossible — civil adjacent");
+      state.arrestCd = 0.8;
+      return;
+    }
+
+    // Success
+    target.arrested = true;
+    target.stun = 99;
+    state.arrestCd = 1.6;
+    for (let i = 0; i < 10; i++) addParticle(target.x, target.y, "#e8c547", 0.6);
+
+    if (target.kind === "meneur") {
+      state.arrestMeneur = true;
+      setPrompt("MENEUR ARRÊTÉ", 2);
+      state.ordre = clamp(state.ordre + 12, 0, 100);
+    } else if (target.kind === "lanceur") {
+      state.arrestLanceurs += 1;
+      setPrompt(`Lanceur arrêté (${state.arrestLanceurs}/4)`, 1.6);
+      state.ordre = clamp(state.ordre + 6, 0, 100);
+    } else {
+      setPrompt("Hostile neutralisé", 1.2);
+      state.ordre = clamp(state.ordre + 3, 0, 100);
+    }
+
+    // Remove shortly
+    setTimeout(() => {
+      state.entities = state.entities.filter((e) => e !== target);
+    }, 400);
+
+    checkWin();
+  }
+
+  /* —— AI / update —— */
+  function updateCivils(dt) {
+    for (const c of state.entities.filter((e) => e.layer === LAYER.CIVIL)) {
+      c.wanderT -= dt;
+      const fightNear = hostilesAlive().some((h) => dist(h, c) < 70) ||
+        dist(c, state.player) < 55;
+      if (fightNear) {
+        // Flee laterally away from combat, never through player crush
+        const away = ang(state.player, c);
+        c.vx += Math.cos(away) * 50 * dt * 10;
+        c.vy += Math.sin(away) * 30 * dt * 10;
+      } else if (c.wanderT <= 0) {
+        c.wanderT = rand(1.2, 3);
+        const a = rand(0, Math.PI * 2);
+        c.vx += Math.cos(a) * c.speed * 0.4;
+        c.vy += Math.sin(a) * c.speed * 0.4;
+      }
+      // Soft separation from player / allies — lateral push, no damage
+      for (const other of state.entities) {
+        if (other === c) continue;
+        if (other.layer === LAYER.CIVIL) continue;
+        const d = dist(c, other);
+        const min = c.r + other.r + 2;
+        if (d < min && d > 0.1) {
+          const push = (min - d) / d;
+          const side = c.x < other.x ? -1 : 1;
+          c.x += side * push * 8;
+          c.y -= push * 2;
+        }
+      }
+      integrate(c, dt, 0.86);
+      clampWorld(c);
+    }
+  }
+
+  function updateHostiles(dt) {
+    const p = state.player;
+    for (const h of hostilesAlive()) {
+      if (h.stun > 0) {
+        h.stun -= dt;
+        integrate(h, dt, 0.7);
+        clampWorld(h);
+        continue;
+      }
+
+      // Prefer blending near civils
+      const cover = state.entities
+        .filter((e) => e.layer === LAYER.CIVIL)
+        .sort((a, b) => dist(a, h) - dist(b, h))[0];
+
+      let tx = p.x;
+      let ty = p.y - 80;
+      if (cover && dist(h, cover) > 40 && Math.random() < 0.4) {
+        tx = cover.x + rand(-30, 30);
+        ty = cover.y + rand(-30, 30);
+      }
+
+      if (h.kind === "meneur") {
+        tx = W * 0.7 + Math.sin(state.t * 0.7) * 60;
+        ty = H * 0.36 + Math.cos(state.t * 0.5) * 40;
+      }
+
+      const a = Math.atan2(ty - h.y, tx - h.x);
+      h.facing = a;
+      h.vx += Math.cos(a) * h.speed * dt * 3;
+      h.vy += Math.sin(a) * h.speed * dt * 3;
+
+      // Throw projectiles at player
+      h.throwCd -= dt;
+      if (h.throwCd <= 0 && dist(h, p) < 320) {
+        h.throwCd = h.kind === "meneur" ? rand(1.2, 2) : rand(2.2, 4);
+        const pa = ang(h, p);
+        state.projectiles.push({
+          x: h.x,
+          y: h.y,
+          vx: Math.cos(pa) * 180,
+          vy: Math.sin(pa) * 180,
+          life: 2.2,
+          r: 5,
+          from: h,
+        });
+      }
+
+      // Melee pressure if close (one-at-a-time feel; shield holds the line)
+      if (dist(h, p) < 34) {
+        if (state.shield) {
+          h.stun = Math.max(h.stun, 0.6);
+          h.vx -= Math.cos(ang(p, h)) * 120;
+          h.vy -= Math.sin(ang(p, h)) * 120;
+          state.ordre = clamp(state.ordre + 0.8 * dt, 0, 100);
+        } else {
+          state.ordre -= 6 * dt;
+        }
+      }
+
+      integrate(h, dt, 0.88);
+      clampWorld(h);
+      h.isolated = isIsolated(h, 58);
+    }
+  }
+
+  function updateAllies(dt) {
+    state.allies.forEach((a, i) => {
+      const targetX = W * 0.28 + i * 55 + Math.sin(state.t + i) * 4;
+      const targetY = H * 0.18;
+      a.vx += (targetX - a.x) * 2 * dt;
+      a.vy += (targetY - a.y) * 2 * dt;
+      integrate(a, dt, 0.8);
+    });
+  }
+
+  function updatePlayer(dt) {
+    const p = state.player;
+    const sp = state.shield ? p.speed * 0.55 : p.speed;
+    if (state.stick.active && (state.stick.nx || state.stick.ny)) {
+      p.vx = state.stick.nx * sp;
+      p.vy = state.stick.ny * sp;
+      if (Math.hypot(state.stick.nx, state.stick.ny) > 0.15) {
+        p.facing = Math.atan2(state.stick.ny, state.stick.nx);
+      }
+    } else {
+      p.vx *= 0.8;
+      p.vy *= 0.8;
+    }
+    integrate(p, dt, 0.78);
+    clampWorld(p, 40);
+
+    // Keyboard fallback
+  }
+
+  function integrate(e, dt, friction) {
+    e.x += e.vx * dt;
+    e.y += e.vy * dt;
+    e.vx *= friction;
+    e.vy *= friction;
+  }
+
+  function clampWorld(e, pad = 24) {
+    e.x = clamp(e.x, pad, W - pad);
+    e.y = clamp(e.y, pad + 80, H - pad - 40);
+  }
+
+  function updateProjectiles(dt) {
+    const p = state.player;
+    for (const pr of state.projectiles) {
+      pr.x += pr.vx * dt;
+      pr.y += pr.vy * dt;
+      pr.life -= dt;
+
+      // Hit civil = urgency (not player fault)
+      for (const c of state.entities.filter((e) => e.layer === LAYER.CIVIL)) {
+        if (dist(pr, c) < c.r + pr.r) {
+          pr.life = 0;
+          c.vx += pr.vx * 0.05;
+          setPrompt("Urgence — civil sous projectile ennemi", 1.5);
+          state.ordre -= 2;
+          break;
+        }
+      }
+
+      if (dist(pr, p) < p.r + pr.r + (state.shield ? 10 : 0)) {
+        pr.life = 0;
+        if (state.shield) {
+          addParticle(p.x, p.y, "#3a7bd5", 0.3);
+          state.ordre = clamp(state.ordre + 1, 0, 100);
+        } else {
+          state.ordre -= 8;
+          p.stun = 0.35;
+          addParticle(p.x, p.y, "#e05a3a", 0.4);
+        }
+      }
+    }
+    state.projectiles = state.projectiles.filter((pr) => pr.life > 0);
+  }
+
+  function updateHud() {
+    el.proprete.textContent = String(Math.round(state.proprete));
+    el.proprete.style.color =
+      state.proprete >= 80 ? "#5cbc7a" : state.proprete >= 60 ? "#e8c547" : "#e05a3a";
+    el.barOrdre.style.width = `${clamp(state.ordre, 0, 100)}%`;
+    const m = state.arrestMeneur ? "OK" : "—";
+    el.progress.textContent = `${state.arrestLanceurs}/4 · Meneur ${m} · ${Math.ceil(state.timeLeft)}s`;
+    el.objectif.textContent = "Arrêter meneur + 4 lanceurs";
+
+    el.btnFlash.classList.toggle("disabled", state.flashCd > 0);
+    el.btnArrest.classList.toggle("disabled", state.arrestCd > 0);
+    el.btnBouclier.classList.toggle("active", state.shield);
+
+    if (state.civilAlertT <= 0) el.civilAlert.classList.add("hidden");
+  }
+
+  function update(dt) {
+    if (state.mode !== "play") return;
+    state.t += dt;
+    state.timeLeft -= dt;
+    state.flashCd = Math.max(0, state.flashCd - dt);
+    state.arrestCd = Math.max(0, state.arrestCd - dt);
+    state.flashBurst = Math.max(0, state.flashBurst - dt);
+    state.promptT = Math.max(0, state.promptT - dt);
+    state.civilAlertT = Math.max(0, state.civilAlertT - dt);
+    if (state.promptT <= 0) {
+      state.prompt = "";
+      el.prompt.textContent = "";
+    }
+
+    // Passive order drain from remaining hostiles (tuned for ~2–4 min runs)
+    const nH = hostilesAlive().length;
+    state.ordre -= nH * 0.12 * dt;
+    if (state.shield) state.ordre += 1.5 * dt;
+
+    updatePlayer(dt);
+    updateAllies(dt);
+    updateCivils(dt);
+    updateHostiles(dt);
+    updateProjectiles(dt);
+
+    for (const pt of state.particles) {
+      pt.x += pt.vx * dt;
+      pt.y += pt.vy * dt;
+      pt.life -= dt;
+    }
+    state.particles = state.particles.filter((p) => p.life > 0);
+
+    updateHud();
+
+    if (state.ordre <= 0) {
+      state.loseReason = "Débordement — jauge Ordre épuisée.";
+      state.loseTip = "Tenez le bouclier et isolez avant d’agir.";
+      endLose();
+      return;
+    }
+    if (state.timeLeft <= 0) {
+      state.loseReason = "Timer écoulé — secteur non sécurisé.";
+      state.loseTip = "Priorisez le meneur et les lanceurs isolés.";
+      endLose();
+    }
+  }
+
+  /* —— Render (rue naturelle + silhouettes lisibles) —— */
+  function drawBackground() {
+    // Overcast dusk sky — natural, not neon
+    const sky = ctx.createLinearGradient(0, 0, 0, 160);
+    sky.addColorStop(0, "#4a5564");
+    sky.addColorStop(0.55, "#6a7380");
+    sky.addColorStop(1, "#8a9098");
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, W, 160);
+
+    // Far building row
+    ctx.fillStyle = "#5c6570";
+    ctx.fillRect(0, 70, W, 90);
+    for (let i = 0; i < 9; i++) {
+      const bx = i * 85 - 20;
+      ctx.fillStyle = i % 2 ? "#6a737e" : "#55606c";
+      ctx.fillRect(bx, 55 + (i % 3) * 8, 78, 105 - (i % 3) * 8);
+    }
+
+    // Sidewalks
+    ctx.fillStyle = "#9a9a92";
+    ctx.fillRect(0, 160, 88, H - 160);
+    ctx.fillRect(W - 88, 160, 88, H - 160);
+    ctx.fillStyle = "#8a8a82";
+    for (let y = 170; y < H; y += 36) {
+      ctx.fillRect(4, y, 80, 2);
+      ctx.fillRect(W - 84, y + 10, 80, 2);
+    }
+    // Curb
+    ctx.fillStyle = "#6e6e66";
+    ctx.fillRect(86, 160, 6, H - 160);
+    ctx.fillRect(W - 92, 160, 6, H - 160);
+
+    // Asphalt street
+    const road = ctx.createLinearGradient(94, 0, W - 94, 0);
+    road.addColorStop(0, "#3a3d42");
+    road.addColorStop(0.5, "#45484e");
+    road.addColorStop(1, "#3a3d42");
+    ctx.fillStyle = road;
+    ctx.fillRect(92, 160, W - 184, H - 160);
+
+    // Wet asphalt sheen
+    ctx.fillStyle = "rgba(255,255,255,0.035)";
+    for (let i = 0; i < 12; i++) {
+      ctx.beginPath();
+      ctx.ellipse(140 + i * 45, 220 + (i % 5) * 160, 28, 8, -0.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Center dashed line
+    ctx.strokeStyle = "rgba(200, 180, 90, 0.35)";
+    ctx.lineWidth = 3;
+    ctx.setLineDash([18, 16]);
+    ctx.beginPath();
+    ctx.moveTo(W / 2, 175);
+    ctx.lineTo(W / 2, H - 20);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Crosswalk near mid
+    ctx.fillStyle = "rgba(230, 230, 220, 0.28)";
+    for (let i = 0; i < 8; i++) {
+      ctx.fillRect(110 + i * 62, H * 0.55, 34, 14);
+    }
+
+    // Manhole
+    ctx.strokeStyle = "rgba(0,0,0,0.35)";
+    ctx.fillStyle = "rgba(50, 52, 56, 0.8)";
+    ctx.beginPath();
+    ctx.ellipse(W * 0.42, H * 0.72, 16, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Façades left / right (pierre / crépi naturels)
+    function drawStreetWall(x, tone) {
+      ctx.fillStyle = tone;
+      ctx.fillRect(x, 160, 86, H - 160);
+      ctx.fillStyle = "rgba(0,0,0,0.12)";
+      ctx.fillRect(x + (x === 0 ? 78 : 0), 160, 8, H - 160);
+      for (let y = 180; y < H - 40; y += 52) {
+        const lit = ((y / 52) | 0) % 3 !== 1;
+        ctx.fillStyle = lit ? "rgba(210, 195, 150, 0.4)" : "rgba(35, 42, 50, 0.55)";
+        ctx.fillRect(x + 12, y, 24, 30);
+        ctx.fillRect(x + 48, y + 8, 24, 30);
+        ctx.strokeStyle = "rgba(0,0,0,0.2)";
+        ctx.strokeRect(x + 12, y, 24, 30);
+        ctx.strokeRect(x + 48, y + 8, 24, 30);
+      }
+      // Storefront
+      ctx.fillStyle = "#5e564c";
+      ctx.fillRect(x, H - 150, 86, 150);
+      ctx.fillStyle = "rgba(170, 195, 205, 0.28)";
+      ctx.fillRect(x + 10, H - 130, 66, 55);
+      ctx.strokeStyle = "rgba(0,0,0,0.3)";
+      ctx.strokeRect(x + 10, H - 130, 66, 55);
+    }
+    drawStreetWall(0, "#a89880");
+    drawStreetWall(W - 86, "#8f8474");
+    // Redraw sidewalks on top of wall feet near curb only — keep storefronts
+    ctx.fillStyle = "#9a9a92";
+    ctx.fillRect(0, 160, 88, 30);
+    ctx.fillRect(W - 88, 160, 88, 30);
+
+    // Street lamps
+    [[110, 240], [W - 110, 420], [120, 700], [W - 118, 960]].forEach(([lx, ly]) => {
+      ctx.fillStyle = "#2c2c2c";
+      ctx.fillRect(lx - 2, ly - 50, 4, 50);
+      ctx.beginPath();
+      ctx.arc(lx, ly - 54, 7, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(255, 220, 150, 0.75)";
+      ctx.fill();
+      const glow = ctx.createRadialGradient(lx, ly - 40, 2, lx, ly, 70);
+      glow.addColorStop(0, "rgba(255, 210, 140, 0.14)");
+      glow.addColorStop(1, "rgba(255, 210, 140, 0)");
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(lx, ly, 70, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Yellow cordon tape
+    ctx.save();
+    ctx.translate(0, H * 0.22);
+    ctx.rotate(-0.015);
+    ctx.fillStyle = "#d4b83a";
+    ctx.fillRect(100, 0, W - 200, 7);
+    ctx.fillStyle = "#1a1a1a";
+    ctx.font = "bold 10px Barlow, sans-serif";
+    for (let x = 120; x < W - 140; x += 95) ctx.fillText("POLICE", x, -3);
+    ctx.restore();
+
+    // Wooden barricade + smolder
+    const bx = W * 0.58;
+    const by = H * 0.3;
+    ctx.fillStyle = "#5a4030";
+    ctx.fillRect(bx, by, 110, 14);
+    ctx.fillStyle = "#6b4a34";
+    ctx.fillRect(bx + 8, by - 12, 95, 12);
+    ctx.fillStyle = "#4a3428";
+    ctx.fillRect(bx + 18, by + 12, 80, 10);
+    // pallet slats
+    ctx.strokeStyle = "rgba(0,0,0,0.35)";
+    for (let i = 0; i < 5; i++) {
+      ctx.beginPath();
+      ctx.moveTo(bx + 10 + i * 20, by - 12);
+      ctx.lineTo(bx + 10 + i * 20, by + 22);
+      ctx.stroke();
+    }
+    const flicker = 10 + Math.sin(state.t * 7) * 3;
+    const fire = ctx.createRadialGradient(bx + 70, by - 6, 2, bx + 70, by - 6, flicker);
+    fire.addColorStop(0, "rgba(255, 180, 60, 0.7)");
+    fire.addColorStop(0.5, "rgba(220, 80, 30, 0.35)");
+    fire.addColorStop(1, "rgba(220, 80, 30, 0)");
+    ctx.fillStyle = fire;
+    ctx.beginPath();
+    ctx.arc(bx + 70, by - 6, flicker, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawGameplayOutline(e) {
+    if (e.layer === LAYER.HOSTILE) {
+      ctx.strokeStyle = "#e05a3a";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.ellipse(0, 2, e.r + 6, e.r + 9, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      if (e.isolated) {
+        ctx.strokeStyle = "#e8c547";
+        ctx.setLineDash([4, 3]);
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.ellipse(0, 2, e.r + 11, e.r + 14, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    } else if (e.layer === LAYER.CIVIL) {
+      ctx.strokeStyle = "rgba(216, 208, 192, 0.7)";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.ellipse(0, 2, e.r + 3, e.r + 5, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (e.kind === "sergent") {
+      ctx.strokeStyle = "#e8c547";
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.ellipse(0, 2, e.r + 7, e.r + 10, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  function drawPoliceSilhouette(e) {
+    const ang = e.kind === "sergent" ? e.facing : -Math.PI / 2;
+    ctx.rotate(ang + Math.PI / 2);
+    ctx.scale(1.45, 1.45);
+
+    // Boots
+    ctx.fillStyle = "#12161c";
+    ctx.fillRect(-7, 10, 5, 9);
+    ctx.fillRect(2, 10, 5, 9);
+
+    // Legs
+    ctx.fillStyle = "#1a2436";
+    ctx.fillRect(-6, 2, 4, 10);
+    ctx.fillRect(2, 2, 4, 10);
+
+    // Torso plate
+    ctx.fillStyle = "#243a58";
+    ctx.beginPath();
+    ctx.moveTo(-10, -8);
+    ctx.lineTo(10, -8);
+    ctx.lineTo(8, 8);
+    ctx.lineTo(-8, 8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#1a2c44";
+    ctx.fillRect(-9, -6, 18, 10);
+
+    // Yellow high-vis band
+    ctx.fillStyle = "#d4b83a";
+    ctx.fillRect(-9, -1, 18, 3.5);
+    ctx.fillStyle = "#1a1a1a";
+    ctx.fillRect(-9, 0.5, 18, 0.8);
+
+    // Arms
+    ctx.fillStyle = "#1e3048";
+    ctx.fillRect(-13, -6, 4, 12);
+    ctx.fillRect(9, -6, 4, 12);
+
+    // Helmet + visor
+    ctx.fillStyle = "#2a3e5c";
+    ctx.beginPath();
+    ctx.ellipse(0, -12, 8, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#0a1018";
+    ctx.beginPath();
+    ctx.ellipse(0, -11, 6.5, 3.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#d4b83a";
+    ctx.fillRect(-6, -17, 12, 2.5);
+
+    // Riot shield
+    if (e.kind === "ally" || (e.kind === "sergent" && state.shield)) {
+      ctx.fillStyle = "#2a4a72";
+      ctx.strokeStyle = "#c9b24a";
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(11, -16);
+      ctx.lineTo(22, -12);
+      ctx.lineTo(22, 14);
+      ctx.lineTo(11, 16);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(255,255,255,0.2)";
+      ctx.strokeRect(13, -8, 7, 16);
+      ctx.fillStyle = "rgba(212,184,58,0.4)";
+      ctx.fillRect(14, -2, 5, 8);
+    }
+
+    if (e.kind === "sergent") {
+      ctx.strokeStyle = "rgba(212, 184, 58, 0.5)";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(0, -20);
+      ctx.lineTo(0, -30);
+      ctx.stroke();
+    }
+  }
+
+  function drawHostileSilhouette(e) {
+    const ang = e.facing || 0;
+    ctx.rotate(ang + Math.PI / 2);
+    ctx.scale(1.4, 1.4);
+
+    // Shoes
+    ctx.fillStyle = "#050505";
+    ctx.fillRect(-6, 12, 4.5, 6);
+    ctx.fillRect(1.5, 12, 4.5, 6);
+
+    // Pants
+    ctx.fillStyle = "#111";
+    ctx.fillRect(-5.5, 2, 4, 11);
+    ctx.fillRect(1.5, 2, 4, 11);
+
+    // Hoodie body
+    ctx.fillStyle = e.kind === "meneur" ? "#0a0a0a" : "#151515";
+    ctx.beginPath();
+    ctx.moveTo(-9, -9);
+    ctx.lineTo(9, -9);
+    ctx.lineTo(8, 7);
+    ctx.lineTo(-8, 7);
+    ctx.closePath();
+    ctx.fill();
+    // Kangaroo pocket
+    ctx.fillStyle = "#0e0e0e";
+    ctx.fillRect(-5, -1, 10, 5);
+
+    // Arms
+    ctx.fillStyle = "#121212";
+    ctx.fillRect(-12, -7, 3.5, 11);
+    ctx.fillRect(8.5, -7, 3.5, 11);
+
+    // Hood + balaclava
+    ctx.fillStyle = "#0a0a0a";
+    ctx.beginPath();
+    ctx.ellipse(0, -13, 8, 7.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#1a1a1a";
+    ctx.beginPath();
+    ctx.ellipse(0, -12, 5.5, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Eye holes
+    ctx.fillStyle = "#2a2a2a";
+    ctx.fillRect(-4, -13, 2.5, 1.8);
+    ctx.fillRect(1.5, -13, 2.5, 1.8);
+
+    if (e.kind === "lanceur" || e.kind === "meneur") {
+      ctx.fillStyle = "#1c1c1c";
+      ctx.fillRect(-13, -8, 6, 12);
+      ctx.strokeStyle = "#333";
+      ctx.strokeRect(-13, -8, 6, 12);
+    }
+
+    if (e.kind !== "frondeur") {
+      ctx.strokeStyle = "#2e2e2e";
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.moveTo(10, 0);
+      ctx.lineTo(18, -16);
+      ctx.stroke();
+    }
+
+    if (e.kind === "meneur") {
+      ctx.fillStyle = "#e05a3a";
+      ctx.font = "bold 10px Oswald, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("★", 0, -24);
+    }
+    if (e.stun > 0) {
+      ctx.fillStyle = "rgba(255,255,255,0.8)";
+      ctx.font = "9px Barlow, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("STUN", 0, 24);
+    }
+  }
+
+  function drawCivilSilhouette(e) {
+    ctx.scale(1.3, 1.3);
+
+    // Shoes
+    ctx.fillStyle = "#3a322c";
+    ctx.fillRect(-5.5, 11, 4, 5);
+    ctx.fillRect(1.5, 11, 4, 5);
+
+    // Legs
+    ctx.fillStyle = "#4a5560";
+    ctx.fillRect(-4.5, 2, 3.5, 10);
+    ctx.fillRect(1, 2, 3.5, 10);
+
+    // Jacket / sweater
+    ctx.fillStyle = e.color || "#6a7a5c";
+    ctx.beginPath();
+    ctx.moveTo(-8, -8);
+    ctx.lineTo(8, -8);
+    ctx.lineTo(7, 6);
+    ctx.lineTo(-7, 6);
+    ctx.closePath();
+    ctx.fill();
+
+    // Arms
+    ctx.fillStyle = e.color || "#6a7a5c";
+    ctx.fillRect(-11, -6, 3, 10);
+    ctx.fillRect(8, -6, 3, 10);
+
+    // Head
+    ctx.fillStyle = "#c4a882";
+    ctx.beginPath();
+    ctx.ellipse(0, -12, 5.5, 5.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#3d2e22";
+    ctx.beginPath();
+    ctx.ellipse(0, -14, 5.5, 3.2, 0, Math.PI, Math.PI * 2);
+    ctx.fill();
+
+    if (e.sign) {
+      ctx.fillStyle = "#f4f1ea";
+      ctx.fillRect(-16, -32, 32, 15);
+      ctx.strokeStyle = "#5a5348";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-16, -32, 32, 15);
+      ctx.fillStyle = "#222";
+      ctx.font = "7px Barlow, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(e.sign, 0, -21);
+      ctx.strokeStyle = "#6a5a48";
+      ctx.beginPath();
+      ctx.moveTo(0, -17);
+      ctx.lineTo(0, -6);
+      ctx.stroke();
+    }
+  }
+
+  function drawEntity(e) {
+    if (e.arrested) return;
+    ctx.save();
+    ctx.translate(e.x, e.y);
+    drawGameplayOutline(e);
+
+    // Soft ground contact shadow
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.beginPath();
+    ctx.ellipse(0, 14, e.r * 0.9, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.save();
+    if (e.layer === LAYER.POLICE) drawPoliceSilhouette(e);
+    else if (e.layer === LAYER.HOSTILE) drawHostileSilhouette(e);
+    else drawCivilSilhouette(e);
+    ctx.restore();
+
+    ctx.restore();
+  }
+
+  function drawFlashCone() {
+    if (state.mode !== "play") return;
+    const p = state.player;
+    // Ghost cone when aiming (always subtle)
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.facing);
+    const blocked = coneHasCivil(p, p.facing, 0.8, 145);
+    ctx.fillStyle = blocked
+      ? "rgba(196,59,59,0.18)"
+      : "rgba(92,188,122,0.12)";
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, 145, -0.8, 0.8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    if (state.flashBurst > 0) {
+      ctx.fillStyle = `rgba(255,255,240,${state.flashBurst * 2})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+
+  function drawProjectiles() {
+    for (const pr of state.projectiles) {
+      ctx.fillStyle = "#e05a3a";
+      ctx.beginPath();
+      ctx.arc(pr.x, pr.y, pr.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawParticles() {
+    for (const pt of state.particles) {
+      ctx.globalAlpha = pt.life / pt.max;
+      ctx.fillStyle = pt.color;
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, pt.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawLegend() {
+    ctx.save();
+    ctx.font = "10px Barlow, sans-serif";
+    ctx.textAlign = "left";
+    const y0 = H - 150;
+    // mini silhouettes
+    const samples = [
+      { label: "Black Bloc", stroke: "#e05a3a", fill: "#141414" },
+      { label: "Civils (protégés)", stroke: "rgba(216,208,192,0.8)", fill: "#8b6b5c" },
+      { label: "Vous / cordon", stroke: "#d4b83a", fill: "#1e2f4a" },
+    ];
+    samples.forEach((s, i) => {
+      const y = y0 + i * 18;
+      ctx.strokeStyle = s.stroke;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(22, y, 8, 10, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = s.fill;
+      ctx.beginPath();
+      ctx.ellipse(22, y, 5, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(242,244,247,0.75)";
+      ctx.fillText(s.label, 36, y + 3);
+    });
+    ctx.restore();
+  }
+
+  function render() {
+    drawBackground();
+    drawFlashCone();
+
+    // Draw order: civils, hostiles, police
+    const layers = [LAYER.CIVIL, LAYER.HOSTILE, LAYER.POLICE];
+    for (const L of layers) {
+      for (const e of state.entities) {
+        if (e.layer === L) drawEntity(e);
+      }
+    }
+    drawProjectiles();
+    drawParticles();
+    drawLegend();
+  }
+
+  /* —— Input —— */
+  function stickPos(clientX, clientY) {
+    const rect = el.stick.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    let dx = clientX - cx;
+    let dy = clientY - cy;
+    const max = rect.width * 0.38;
+    const m = Math.hypot(dx, dy) || 1;
+    if (m > max) {
+      dx = (dx / m) * max;
+      dy = (dy / m) * max;
+    }
+    el.knob.style.transform = `translate(${dx}px, ${dy}px)`;
+    state.stick.nx = dx / max;
+    state.stick.ny = dy / max;
+  }
+
+  function stickEnd() {
+    state.stick.active = false;
+    state.stick.id = null;
+    state.stick.nx = 0;
+    state.stick.ny = 0;
+    el.knob.style.transform = "translate(0,0)";
+  }
+
+  el.stick.addEventListener("pointerdown", (ev) => {
+    ev.preventDefault();
+    el.stick.setPointerCapture(ev.pointerId);
+    state.stick.active = true;
+    state.stick.id = ev.pointerId;
+    stickPos(ev.clientX, ev.clientY);
+  });
+  el.stick.addEventListener("pointermove", (ev) => {
+    if (!state.stick.active || ev.pointerId !== state.stick.id) return;
+    stickPos(ev.clientX, ev.clientY);
+  });
+  el.stick.addEventListener("pointerup", stickEnd);
+  el.stick.addEventListener("pointercancel", stickEnd);
+
+  el.btnBouclier.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    useBouclier(true);
+  });
+  el.btnBouclier.addEventListener("pointerup", () => useBouclier(false));
+  el.btnBouclier.addEventListener("pointerleave", () => useBouclier(false));
+  el.btnFlash.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    useFlash();
+  });
+  el.btnArrest.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    useArrest();
+  });
+
+  // Keyboard for desktop playtest
+  const keys = {};
+  window.addEventListener("keydown", (e) => {
+    keys[e.key.toLowerCase()] = true;
+    if (state.mode === "play") {
+      if (e.key === " ") {
+        e.preventDefault();
+        useBouclier(true);
+      }
+      if (e.key.toLowerCase() === "f") useFlash();
+      if (e.key.toLowerCase() === "r") useArrest();
+    }
+  });
+  window.addEventListener("keyup", (e) => {
+    keys[e.key.toLowerCase()] = false;
+    if (e.key === " ") useBouclier(false);
+  });
+
+  function applyKeys() {
+    if (state.stick.active) return;
+    let nx = 0;
+    let ny = 0;
+    if (keys["z"] || keys["w"] || keys["arrowup"]) ny -= 1;
+    if (keys["s"] || keys["arrowdown"]) ny += 1;
+    if (keys["q"] || keys["a"] || keys["arrowleft"]) nx -= 1;
+    if (keys["d"] || keys["arrowright"]) nx += 1;
+    const m = Math.hypot(nx, ny) || 1;
+    state.stick.nx = nx / m;
+    state.stick.ny = ny / m;
+    if (!nx && !ny) {
+      state.stick.nx = 0;
+      state.stick.ny = 0;
+    }
+  }
+
+  function bindTap(id, fn) {
+    const node = document.getElementById(id);
+    if (!node) return;
+    let lock = 0;
+    const run = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const now = performance.now();
+      if (now - lock < 350) return;
+      lock = now;
+      fn();
+    };
+    node.addEventListener("click", run);
+    node.addEventListener("pointerdown", run);
+  }
+  bindTap("btn-jouer", () => goBrief());
+  bindTap("btn-deploy", () => startPlay());
+  bindTap("btn-win-again", () => {
+    state.mode = "title";
+    showScreen("title");
+  });
+  bindTap("btn-retry", () => startPlay());
+  bindTap("btn-menu", () => {
+    state.mode = "title";
+    showScreen("title");
+  });
+
+  function goBrief() {
+    state.mode = "brief";
+    showScreen("brief");
+  }
+
+  function startPlay() {
+    spawnLevel();
+    state.mode = "play";
+    showScreen("play");
+  }
+
+  // Expose helpers for automated demo / QA
+  window.FrenchWar = {
+    state,
+    spawnLevel,
+    useFlash,
+    useArrest,
+    useBouclier,
+    softLockTarget,
+    coneHasCivil,
+    civilsNear,
+    criticalFault,
+    endWin,
+    goBrief,
+    startPlay,
+    forceWin() {
+      state.arrestLanceurs = 4;
+      state.arrestMeneur = true;
+      state.proprete = Math.max(state.proprete, 96);
+      endWin();
+    },
+    forceCivilFault() {
+      criticalFault(
+        "Faute civile critique — civil en zone d’effet.",
+        "Isoler avant de lancer."
+      );
+    },
+  };
+
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.033, (now - last) / 1000);
+    last = now;
+    applyKeys();
+    update(dt);
+    render();
+    requestAnimationFrame(frame);
+  }
+
+  // Idle street under title
+  spawnLevel();
+  state.mode = "title";
+  showScreen("title");
+  requestAnimationFrame(frame);
+})();
+
+  </script>
+</body>
+</html>

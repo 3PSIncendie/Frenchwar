@@ -12,8 +12,9 @@
   --danger: #b04040;
   --white: #f2f4f7;
   --muted: #8a93a3;
-  --font-display: "Oswald", Impact, sans-serif;
-  --font-ui: "Barlow", system-ui, sans-serif;
+  /* Polices système uniquement — zéro dépendance réseau */
+  --font-display: Impact, "Arial Narrow", "Helvetica Neue Condensed", sans-serif;
+  --font-ui: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -321,8 +322,22 @@ html, body {
   min-width: 180px;
   padding: 12px 20px;
 }
+a.cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+.cta.download {
+  margin-top: 8px;
+  font-size: 14px;
+  letter-spacing: .1em;
+  color: var(--civil);
+  border-color: rgba(216, 208, 192, .45);
+}
 
 .hint { color: var(--muted); font-size: 12px; letter-spacing: .06em; }
+.download-hint { margin-top: -6px; font-size: 11px; opacity: .85; }
 .rules-line {
   margin-top: 8px;
   font-size: 11px;

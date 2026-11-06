@@ -5,11 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#121820" />
   <title>FRENCH WAR — Cordon</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon-192.png" sizes="192x192" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <link rel="stylesheet" href="css/style.css" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Barlow:wght@400;600;700&display=swap" rel="stylesheet" />
 </head>
 <body>
   <div id="app">
@@ -70,7 +71,14 @@
           <div class="brand-sub">Cordon — confrontation ciblée</div>
         </div>
         <button type="button" id="btn-jouer" class="cta" onclick="window.FrenchWar&&FrenchWar.goBrief()">/// JOUER ///</button>
+        <a
+          id="btn-download"
+          class="cta ghost download"
+          href="french-war-offline.html"
+          download="french-war.html"
+        >TÉLÉCHARGER HORS-LIGNE</a>
         <p class="hint">Place République · 1 secteur · non-létal</p>
+        <p class="hint download-hint">Un seul fichier HTML — ouvrir sans connexion</p>
         <p class="rules-line">Manifestants = jamais ciblables</p>
       </div>
     </div>
@@ -118,5 +126,12 @@
     </div>
   </div>
   <script src="js/game.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js").catch(() => {});
+      });
+    }
+  </script>
 </body>
 </html>
