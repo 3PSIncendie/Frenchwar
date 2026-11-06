@@ -5,11 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#121820" />
+  <meta name="application-name" content="FRENCH WAR" />
   <title>FRENCH WAR — Cordon</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <link rel="stylesheet" href="css/style.css" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Barlow:wght@400;600;700&display=swap" rel="stylesheet" />
 </head>
 <body>
   <div id="app">
@@ -70,8 +72,30 @@
           <div class="brand-sub">Cordon — confrontation ciblée</div>
         </div>
         <button type="button" id="btn-jouer" class="cta" onclick="window.FrenchWar&&FrenchWar.goBrief()">/// JOUER ///</button>
+        <button type="button" id="btn-install" class="cta ghost download" hidden>INSTALLER SUR ANDROID</button>
+        <a
+          id="btn-download"
+          class="cta ghost download"
+          href="french-war-offline.html"
+          download="french-war.html"
+        >TÉLÉCHARGER HORS-LIGNE</a>
         <p class="hint">Place République · 1 secteur · non-létal</p>
+        <p id="install-hint" class="hint download-hint">Sur Android : installer l’app pour jouer hors-ligne</p>
         <p class="rules-line">Manifestants = jamais ciblables</p>
+      </div>
+    </div>
+
+    <div id="screen-install-help" class="screen hidden">
+      <div class="panel">
+        <div class="eyebrow">ANDROID · CHROME</div>
+        <h2>INSTALLER</h2>
+        <ol class="install-steps">
+          <li>Ouvre le jeu dans <strong>Chrome</strong></li>
+          <li>Tape <strong>⋮</strong> en haut à droite</li>
+          <li>Choisis <strong>Installer l’application</strong><br /><span class="muted">ou « Ajouter à l’écran d’accueil »</span></li>
+          <li>Lance l’icône <strong>FRENCH WAR</strong> — hors-ligne OK</li>
+        </ol>
+        <button type="button" id="btn-close-install-help" class="cta">COMPRIS</button>
       </div>
     </div>
 
@@ -118,5 +142,6 @@
     </div>
   </div>
   <script src="js/game.js"></script>
+  <script src="js/install.js"></script>
 </body>
 </html>
