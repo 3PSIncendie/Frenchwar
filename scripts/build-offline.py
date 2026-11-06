@@ -9,10 +9,27 @@ js = (root / "js/game.js").read_text(encoding="utf-8")
 html = (root / "index.html").read_text(encoding="utf-8")
 
 body = re.search(r"<body>(.*)</body>", html, re.S).group(1)
-body = re.sub(r'\s*<script src="js/game\.js"></script>\s*', "\n", body)
-# Retirer le bloc téléchargement / install PWA du fichier offline (déjà le fichier)
+body = re.sub(r"\s*<script[^>]*>.*?</script>\s*", "\n", body, flags=re.S)
+# Retirer install / download (le fichier EST déjà hors-ligne)
+body = re.sub(
+    r'\s*<button[^>]*id="btn-install"[^>]*>.*?</button>\s*',
+    "\n",
+    body,
+    flags=re.S,
+)
 body = re.sub(
     r'\s*<a[^>]*id="btn-download"[^>]*>.*?</a>\s*',
+    "\n",
+    body,
+    flags=re.S,
+)
+body = re.sub(
+    r'\s*<div id="screen-install-help"[\s\S]*?</div>\s*(?=\s*<div id="screen-brief")',
+    "\n",
+    body,
+)
+body = re.sub(
+    r'\s*<p id="install-hint"[^>]*>.*?</p>\s*',
     "\n",
     body,
     flags=re.S,

@@ -1,13 +1,17 @@
 {
+  "id": "/",
   "name": "FRENCH WAR — Cordon",
   "short_name": "FRENCH WAR",
   "description": "Prototype jouable portrait : maintien de l’ordre vs Black Bloc.",
-  "start_url": "./",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#000000",
   "theme_color": "#121820",
   "lang": "fr",
+  "dir": "ltr",
+  "categories": ["games"],
   "icons": [
     {
       "src": "icons/icon-192.png",
@@ -19,7 +23,13 @@
       "src": "icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

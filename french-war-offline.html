@@ -348,6 +348,17 @@ a.cta {
 
 .hint { color: var(--muted); font-size: 12px; letter-spacing: .06em; }
 .download-hint { margin-top: -6px; font-size: 11px; opacity: .85; }
+.install-steps {
+  text-align: left;
+  list-style: decimal;
+  padding-left: 1.25em;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--civil);
+  margin: 0 0 18px;
+}
+.install-steps li { margin-bottom: 10px; }
+.install-steps .muted { color: var(--muted); font-size: 12px; }
 .rules-line {
   margin-top: 8px;
   font-size: 11px;
@@ -510,12 +521,10 @@ a.cta {
         </div>
         <button type="button" id="btn-jouer" class="cta" onclick="window.FrenchWar&&FrenchWar.goBrief()">/// JOUER ///</button>
 <p class="hint">Place République · 1 secteur · non-létal</p>
-        <p class="hint download-hint">Un seul fichier HTML — ouvrir sans connexion</p>
-        <p class="rules-line">Manifestants = jamais ciblables</p>
+<p class="rules-line">Manifestants = jamais ciblables</p>
       </div>
     </div>
-
-    <div id="screen-brief" class="screen hidden">
+<div id="screen-brief" class="screen hidden">
       <div class="panel">
         <h2>BRIEF RADIO</h2>
         <p class="radio">« Sergent, Place République. Isolez le Black Bloc. Cordons jaunes. Civils hors zone d’effet — faute critique = abort. »</p>
@@ -557,13 +566,7 @@ a.cta {
       </div>
     </div>
   </div>
-<script>
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./sw.js").catch(() => {});
-      });
-    }
-  </script>
+
 
   <script>
 (() => {

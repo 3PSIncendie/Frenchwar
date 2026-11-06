@@ -1,10 +1,11 @@
 /* FRENCH WAR — cache offline (assets locaux uniquement) */
-const CACHE = "french-war-v1";
+const CACHE = "french-war-v2";
 const ASSETS = [
   "./",
   "./index.html",
   "./css/style.css",
   "./js/game.js",
+  "./js/install.js",
   "./manifest.webmanifest",
   "./french-war-offline.html",
   "./icons/icon-192.png",

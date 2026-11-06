@@ -10,11 +10,11 @@ cd /agent/french-war && python3 -m http.server 8765 --bind 127.0.0.1
 
 Ouvrir `http://127.0.0.1:8765/`
 
-## Hors-ligne
+## Android / hors-ligne
 
-- Sur l’écran titre : **TÉLÉCHARGER HORS-LIGNE** → fichier unique `french-war.html` (ouvrir dans le navigateur, sans réseau).
-- Ou ouvrir directement `french-war-offline.html`.
-- Après une visite en ligne, le service worker garde aussi le site jouable hors connexion.
+- Sur téléphone : ouvrir le jeu dans **Chrome** → bouton **INSTALLER SUR ANDROID** (ou menu ⋮ → *Installer l’application* / *Ajouter à l’écran d’accueil*).
+- L’icône FRENCH WAR lance le jeu en plein écran, y compris hors connexion (service worker).
+- Sur desktop : **TÉLÉCHARGER HORS-LIGNE** → fichier unique `french-war.html` (peu fiable sur Android).
 - Régénérer le pack : `python3 scripts/build-offline.py`
 
 ## Contrôles

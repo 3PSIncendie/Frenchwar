@@ -338,6 +338,17 @@ a.cta {
 
 .hint { color: var(--muted); font-size: 12px; letter-spacing: .06em; }
 .download-hint { margin-top: -6px; font-size: 11px; opacity: .85; }
+.install-steps {
+  text-align: left;
+  list-style: decimal;
+  padding-left: 1.25em;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--civil);
+  margin: 0 0 18px;
+}
+.install-steps li { margin-bottom: 10px; }
+.install-steps .muted { color: var(--muted); font-size: 12px; }
 .rules-line {
   margin-top: 8px;
   font-size: 11px;
