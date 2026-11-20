@@ -55,6 +55,54 @@
   let bossFight = false;
   let hitStop = 0;
   let zoneName = "dojo";
+  let assetsReady = false;
+
+  const ASSETS = {
+    ninjaIdle: "assets/chars/ninja-idle.png",
+    ninjaRun: "assets/chars/ninja-run.png",
+    ninjaAttack: "assets/chars/ninja-attack.png",
+    ninjaHurt: "assets/chars/ninja-hurt.png",
+    assassin: "assets/chars/assassin.png",
+    monster: "assets/chars/monster.png",
+    boss: "assets/chars/boss.png",
+    bgDojo: "assets/bg/bg-dojo.jpg",
+    bgForest: "assets/bg/bg-forest.jpg",
+    bgRooftops: "assets/bg/bg-rooftops.jpg",
+    bgCave: "assets/bg/bg-cave.jpg",
+    bgFortress: "assets/bg/bg-fortress.jpg",
+    bgBoss: "assets/bg/bg-boss.jpg",
+  };
+  const img = {};
+
+  function loadImage(src) {
+    return new Promise((resolve) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => resolve(null);
+      el.src = src;
+    });
+  }
+
+  async function loadAllAssets() {
+    const entries = Object.entries(ASSETS);
+    const loaded = await Promise.all(entries.map(([, src]) => loadImage(src)));
+    entries.forEach(([key], i) => {
+      img[key] = loaded[i];
+    });
+    assetsReady = true;
+  }
+
+  function bgKeyForZone(zone, boss) {
+    if (boss) return "bgBoss";
+    const map = {
+      dojo: "bgDojo",
+      forest: "bgForest",
+      rooftops: "bgRooftops",
+      cave: "bgCave",
+      fortress: "bgFortress",
+    };
+    return map[zone] || "bgDojo";
+  }
 
   const $ = (id) => document.getElementById(id);
   const screens = {
@@ -143,8 +191,8 @@
       y: groundY,
       vx: 0,
       vy: 0,
-      w: 52,
-      h: 74,
+      w: 72,
+      h: 140,
       facing: 1,
       onGround: true,
       attacking: 0,
@@ -200,8 +248,8 @@
         type,
         x,
         y: groundY,
-        w: 44,
-        h: 66,
+        w: 64,
+        h: 128,
         vx: 0,
         vy: 0,
         hp: Math.round(18 * sc),
@@ -222,8 +270,8 @@
         type,
         x,
         y: groundY,
-        w: 64,
-        h: 82,
+        w: 90,
+        h: 150,
         vx: 0,
         vy: 0,
         hp: Math.round(55 * sc),
@@ -245,8 +293,8 @@
         type: "boss",
         x: cameraX + window.innerWidth * 0.65,
         y: groundY,
-        w: 96,
-        h: 118,
+        w: 128,
+        h: 175,
         vx: 0,
         vy: 0,
         hp: Math.round(180 * bossSc),
@@ -735,149 +783,68 @@
     updateHud();
   }
 
-  // ——— Zone palettes ———
-  function zonePalette(boss) {
-    const z = zoneName;
-    if (z === "forest") {
-      return {
-        sky0: boss ? "#061410" : "#0a1a14",
-        sky1: boss ? "#0e2818" : "#163528",
-        sky2: boss ? "#1a3020" : "#214032",
-        far: "#0c2218",
-        mid: "#143828",
-        ground: "#1a2e22",
-        groundTop: "#2a4a34",
-        accent: "rgba(120,180,90,0.2)",
-        moon: "rgba(210,230,200,0.75)",
-      };
+  // ——— Image backgrounds + sprites ———
+  function drawParallaxLayer(image, w, h, scrollFactor, yScale, alpha) {
+    if (!image) return;
+    const imgH = h * yScale;
+    const imgW = (image.width / image.height) * imgH;
+    const offset = -((cameraX * scrollFactor) % imgW);
+    ctx.globalAlpha = alpha;
+    for (let x = offset - imgW; x < w + imgW; x += imgW - 1) {
+      ctx.drawImage(image, x, h - imgH, imgW, imgH);
     }
-    if (z === "rooftops") {
-      return {
-        sky0: boss ? "#0a0c18" : "#0c1420",
-        sky1: boss ? "#1a1830" : "#182838",
-        sky2: boss ? "#241828" : "#243848",
-        far: "#121a28",
-        mid: "#1a2838",
-        ground: "#1c2430",
-        groundTop: "#3a4858",
-        accent: "rgba(232,168,74,0.18)",
-        moon: "rgba(240,220,180,0.85)",
-      };
-    }
-    if (z === "cave") {
-      return {
-        sky0: boss ? "#08060a" : "#0a0c10",
-        sky1: boss ? "#1a100c" : "#141820",
-        sky2: boss ? "#2a1810" : "#1c2428",
-        far: "#0e1014",
-        mid: "#181c22",
-        ground: "#1a1816",
-        groundTop: "#3a3028",
-        accent: "rgba(212,83,42,0.22)",
-        moon: "rgba(232,120,60,0.35)",
-      };
-    }
-    if (z === "fortress") {
-      return {
-        sky0: boss ? "#100808" : "#101418",
-        sky1: boss ? "#2a1010" : "#1c242c",
-        sky2: boss ? "#3a1814" : "#283038",
-        far: "#18141a",
-        mid: "#242028",
-        ground: "#1e1c1a",
-        groundTop: "#4a3a32",
-        accent: "rgba(196,70,48,0.25)",
-        moon: "rgba(255,180,120,0.55)",
-      };
-    }
-    // dojo default — ink / lantern / jade (no purple)
-    return {
-      sky0: boss ? "#050c10" : "#071018",
-      sky1: boss ? "#142028" : "#102430",
-      sky2: boss ? "#1c2a28" : "#1a2e28",
-      far: "#0c1c24",
-      mid: "#123038",
-      ground: "#152820",
-      groundTop: "#1e3a30",
-      accent: "rgba(232,168,74,0.28)",
-      moon: "rgba(232,220,180,0.9)",
-    };
+    ctx.globalAlpha = 1;
   }
 
   function drawBackground(w, h) {
-    const boss = bossFight || isBossLevel(save.level);
-    const pal = zonePalette(boss && state === "play");
-    const g = ctx.createLinearGradient(0, 0, 0, h);
-    g.addColorStop(0, pal.sky0);
-    g.addColorStop(0.42, pal.sky1);
-    g.addColorStop(1, pal.sky2);
-    ctx.fillStyle = g;
+    const boss = (bossFight || isBossLevel(save.level)) && state === "play";
+    const key = bgKeyForZone(zoneName, boss);
+    const bg = img[key] || img.bgDojo;
+    const far = img[bgKeyForZone(zoneName, false)] || bg;
+
+    ctx.fillStyle = "#070d12";
     ctx.fillRect(0, 0, w, h);
 
-    // moon / light
-    const moonX = w * 0.78 - cameraX * 0.015;
-    const moonY = h * (boss ? 0.12 : 0.16);
-    if (zoneName === "cave") {
-      const glow = ctx.createRadialGradient(moonX, moonY + 40, 4, moonX, moonY + 40, 90);
-      glow.addColorStop(0, pal.moon);
-      glow.addColorStop(1, "transparent");
-      ctx.fillStyle = glow;
-      ctx.fillRect(moonX - 90, moonY - 50, 180, 180);
-    } else {
-      ctx.beginPath();
-      ctx.fillStyle = pal.moon;
-      ctx.arc(moonX, moonY, boss ? 42 : 34, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.fillStyle = pal.sky0;
-      ctx.arc(moonX + 12, moonY - 4, 28, 0, Math.PI * 2);
-      ctx.fill();
+    // far soft layer (stretched / dim)
+    if (far) {
+      ctx.globalAlpha = 0.45;
+      const farH = h * 0.95;
+      const farW = (far.width / far.height) * farH * 1.15;
+      const ox = -((cameraX * 0.12) % farW);
+      for (let x = ox - farW; x < w + farW; x += farW - 1) {
+        ctx.drawImage(far, x, h * 0.05, farW, farH);
+      }
+      ctx.globalAlpha = 1;
     }
 
-    // far parallax
-    ctx.fillStyle = pal.far;
-    drawMountains(w, h, cameraX * 0.12, h * 0.46, 95, 0.85);
-    ctx.fillStyle = pal.mid;
-    drawMountains(w, h, cameraX * 0.28, h * 0.54, 72, 1.1);
-
-    // zone props mid-layer
-    drawZoneProps(w, h, cameraX * 0.55, pal, false);
-    // near props
-    drawZoneProps(w, h, cameraX * 0.85, pal, true);
-
-    // ground
-    ctx.fillStyle = pal.ground;
-    ctx.fillRect(0, groundY, w, h - groundY);
-    ctx.fillStyle = pal.groundTop;
-    ctx.fillRect(0, groundY, w, 7);
-
-    // ground grain
-    ctx.strokeStyle = "rgba(255,255,255,0.04)";
-    ctx.lineWidth = 1;
-    for (let x = -((cameraX * 0.9) % 36); x < w; x += 36) {
-      ctx.beginPath();
-      ctx.moveTo(x, groundY + 8);
-      ctx.lineTo(x + 16, Math.min(h, groundY + 80));
-      ctx.stroke();
+    // main painted environment
+    if (bg) {
+      drawParallaxLayer(bg, w, h, 0.35, 1.0, 1);
     }
+
+    // ground strip for feet
+    const groundGrad = ctx.createLinearGradient(0, groundY - 8, 0, h);
+    groundGrad.addColorStop(0, "rgba(0,0,0,0)");
+    groundGrad.addColorStop(0.08, "rgba(8,12,14,0.55)");
+    groundGrad.addColorStop(1, "rgba(4,6,8,0.92)");
+    ctx.fillStyle = groundGrad;
+    ctx.fillRect(0, groundY - 8, w, h - groundY + 8);
 
     if (boss) {
-      const rim = ctx.createRadialGradient(w * 0.5, groundY - 40, 20, w * 0.5, groundY, w * 0.55);
-      rim.addColorStop(0, pal.accent);
+      const rim = ctx.createRadialGradient(w * 0.5, groundY - 30, 10, w * 0.5, groundY, w * 0.6);
+      rim.addColorStop(0, "rgba(232,120,40,0.28)");
       rim.addColorStop(1, "transparent");
       ctx.fillStyle = rim;
-      ctx.fillRect(0, groundY - 160, w, 160);
+      ctx.fillRect(0, groundY - 180, w, 180);
     }
 
-    // ambient motes
     ambient.forEach((a) => {
       const sx = a.x - cameraX;
       if (sx < -20 || sx > w + 20) return;
-      ctx.globalAlpha = 0.35;
+      ctx.globalAlpha = 0.4;
       ctx.fillStyle = a.kind === "ember" ? "#e8783a" : a.kind === "leaf" ? "#8cba6a" : "#c8d8d0";
-      if (a.kind === "leaf") {
-        ctx.fillRect(sx, a.y, a.size + 1, a.size * 0.6);
-      } else {
+      if (a.kind === "leaf") ctx.fillRect(sx, a.y, a.size + 1, a.size * 0.6);
+      else {
         ctx.beginPath();
         ctx.arc(sx, a.y, a.size, 0, Math.PI * 2);
         ctx.fill();
@@ -886,310 +853,62 @@
     ctx.globalAlpha = 1;
   }
 
-  function drawMountains(w, h, offset, base, amp, scale) {
-    ctx.beginPath();
-    ctx.moveTo(-20, h);
-    for (let x = -40; x <= w + 40; x += 28) {
-      const n = Math.sin((x + offset) * 0.01 * scale) * amp + Math.cos((x + offset) * 0.023) * amp * 0.4;
-      ctx.lineTo(x, base - n);
+  function spriteFor(ent, isPlayer) {
+    if (isPlayer) {
+      if (ent.pose === "hurt" || ent.hitFlash > 0.08) return img.ninjaHurt || img.ninjaIdle;
+      if (ent.pose === "attack" || ent.attacking > 0) return img.ninjaAttack || img.ninjaIdle;
+      if (ent.pose === "run" || ent.pose === "jump") return img.ninjaRun || img.ninjaIdle;
+      return img.ninjaIdle;
     }
-    ctx.lineTo(w + 20, h);
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  function drawZoneProps(w, h, scroll, pal, near) {
-    const spacing = near ? 320 : 420;
-    const start = -((scroll % spacing) + spacing);
-    for (let x = start; x < w + spacing; x += spacing) {
-      const gx = x;
-      if (zoneName === "dojo") drawTorii(gx + (near ? 40 : 0), groundY, near ? 1 : 0.7, near);
-      else if (zoneName === "forest") drawTree(gx + 30, groundY, near ? 1.1 : 0.75, near);
-      else if (zoneName === "rooftops") drawRoofline(gx, groundY, near ? 1 : 0.7, near);
-      else if (zoneName === "cave") drawStalactite(gx + 50, near ? 0 : 10, near ? 1 : 0.8, near, pal);
-      else if (zoneName === "fortress") drawBattlement(gx, groundY, near ? 1 : 0.75, near);
-    }
-  }
-
-  function drawTorii(x, gy, s, near) {
-    ctx.save();
-    ctx.translate(x, gy);
-    ctx.scale(s, s);
-    ctx.globalAlpha = near ? 0.85 : 0.45;
-    ctx.fillStyle = near ? "#8a3020" : "#5a2418";
-    ctx.fillRect(-42, -118, 12, 118);
-    ctx.fillRect(30, -118, 12, 118);
-    ctx.fillRect(-58, -128, 116, 14);
-    ctx.fillRect(-50, -108, 100, 9);
-    // highlight
-    ctx.fillStyle = "rgba(232,168,74,0.25)";
-    ctx.fillRect(-58, -128, 116, 3);
-    ctx.restore();
-  }
-
-  function drawTree(x, gy, s, near) {
-    ctx.save();
-    ctx.translate(x, gy);
-    ctx.scale(s, s);
-    ctx.globalAlpha = near ? 0.9 : 0.4;
-    ctx.fillStyle = "#2a1c12";
-    ctx.fillRect(-6, -70, 12, 70);
-    ctx.fillStyle = near ? "#1a3a28" : "#12281c";
-    ctx.beginPath();
-    ctx.moveTo(0, -150);
-    ctx.lineTo(48, -55);
-    ctx.lineTo(-48, -55);
-    ctx.closePath();
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(0, -175);
-    ctx.lineTo(36, -90);
-    ctx.lineTo(-36, -90);
-    ctx.closePath();
-    ctx.fillStyle = near ? "#245038" : "#163828";
-    ctx.fill();
-    ctx.restore();
-  }
-
-  function drawRoofline(x, gy, s, near) {
-    ctx.save();
-    ctx.translate(x, gy);
-    ctx.scale(s, s);
-    ctx.globalAlpha = near ? 0.8 : 0.35;
-    ctx.fillStyle = near ? "#2a3440" : "#1a222c";
-    ctx.fillRect(-20, -90, 100, 90);
-    ctx.fillStyle = near ? "#3a4858" : "#243040";
-    ctx.beginPath();
-    ctx.moveTo(-30, -90);
-    ctx.lineTo(30, -130);
-    ctx.lineTo(90, -90);
-    ctx.closePath();
-    ctx.fill();
-    // window glow
-    if (near) {
-      ctx.fillStyle = "rgba(232,168,74,0.35)";
-      ctx.fillRect(10, -60, 14, 18);
-      ctx.fillRect(40, -60, 14, 18);
-    }
-    ctx.restore();
-  }
-
-  function drawStalactite(x, y, s, near, pal) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.scale(s, s);
-    ctx.globalAlpha = near ? 0.7 : 0.35;
-    ctx.fillStyle = "#2a2824";
-    ctx.beginPath();
-    ctx.moveTo(-18, 0);
-    ctx.lineTo(0, near ? 90 : 60);
-    ctx.lineTo(18, 0);
-    ctx.closePath();
-    ctx.fill();
-    if (near) {
-      ctx.fillStyle = pal.accent;
-      ctx.beginPath();
-      ctx.arc(0, 100, 4, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-  }
-
-  function drawBattlement(x, gy, s, near) {
-    ctx.save();
-    ctx.translate(x, gy);
-    ctx.scale(s, s);
-    ctx.globalAlpha = near ? 0.85 : 0.4;
-    ctx.fillStyle = near ? "#3a342e" : "#24201c";
-    ctx.fillRect(-10, -110, 90, 110);
-    for (let i = 0; i < 4; i++) {
-      ctx.fillRect(-10 + i * 24, -128, 16, 20);
-    }
-    ctx.fillStyle = "rgba(196,70,48,0.3)";
-    ctx.fillRect(20, -70, 18, 28);
-    ctx.restore();
-  }
-
-  function roundRect(x, y, w, h, r) {
-    const rr = Math.min(r, w / 2, h / 2);
-    ctx.beginPath();
-    ctx.moveTo(x + rr, y);
-    ctx.arcTo(x + w, y, x + w, y + h, rr);
-    ctx.arcTo(x + w, y + h, x, y + h, rr);
-    ctx.arcTo(x, y + h, x, y, rr);
-    ctx.arcTo(x, y, x + w, y, rr);
-    ctx.closePath();
+    if (ent.type === "assassin") return img.assassin;
+    if (ent.type === "monster") return img.monster;
+    if (ent.type === "boss") return img.boss;
+    return img.assassin;
   }
 
   function drawCharacter(ent, isPlayer) {
-    const { x, y, w, h, facing, anim, hitFlash, attacking, pose } = ent;
+    const { x, y, h, facing, anim, hitFlash, attacking } = ent;
     const sx = x - cameraX;
-    const run = pose === "run";
-    const bob = pose === "idle" ? Math.sin(anim) * 1.8 : run ? Math.abs(Math.sin(anim)) * 2.5 : 0;
-    const legA = run ? Math.sin(anim) * 11 : pose === "jump" ? -8 : Math.sin(anim * 0.5) * 2;
-    const armA = pose === "attack" || attacking > 0 ? 28 : run ? -Math.sin(anim) * 10 : Math.sin(anim * 0.6) * 3;
+    const bob = ent.pose === "idle" ? Math.sin(anim) * 1.5 : ent.pose === "run" ? Math.abs(Math.sin(anim)) * 2 : 0;
+    const sprite = spriteFor(ent, isPlayer);
 
     ctx.save();
-    ctx.translate(sx, y - h + bob);
+    ctx.translate(sx, y + bob);
     ctx.scale(facing, 1);
 
-    if (hitFlash > 0) ctx.globalAlpha = 0.5 + Math.sin(time * 50) * 0.3;
-    if (isPlayer && ent.invuln > 0 && Math.floor(time * 18) % 2 === 0) ctx.globalAlpha = 0.35;
+    if (hitFlash > 0) ctx.globalAlpha = 0.55 + Math.sin(time * 50) * 0.3;
+    if (isPlayer && ent.invuln > 0 && Math.floor(time * 18) % 2 === 0) ctx.globalAlpha = 0.4;
 
-    // shadow
-    ctx.fillStyle = "rgba(0,0,0,0.4)";
+    // contact shadow
+    ctx.fillStyle = "rgba(0,0,0,0.45)";
     ctx.beginPath();
-    ctx.ellipse(0, h - 1, w * 0.42, 5.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, -2, Math.max(18, ent.w * 0.45), 7, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    const palette = isPlayer
-      ? { cloth: "#1a2830", clothHi: "#2a3c48", mask: "#0c1214", trim: "#d4532a", eye: "#e8a84a", skin: "#2a3438" }
-      : ent.type === "assassin"
-        ? { cloth: "#243038", clothHi: "#344850", mask: "#10161a", trim: "#5a7080", eye: "#3ecf9a", skin: "#2a3438" }
-        : ent.type === "monster"
-          ? { cloth: "#3a2820", clothHi: "#523828", mask: "#1a1210", trim: "#8a5030", eye: "#e8783a", skin: "#4a3028" }
-          : { cloth: "#3a1824", clothHi: "#5a2434", mask: "#140c10", trim: "#e8a84a", eye: "#ff5a4a", skin: "#3a2028" };
-
-    // back arm
-    ctx.fillStyle = palette.cloth;
-    ctx.save();
-    ctx.translate(-w * 0.28, h * 0.32);
-    ctx.rotate((-armA * Math.PI) / 180);
-    roundRect(-5, 0, 10, h * 0.28, 3);
-    ctx.fill();
-    ctx.restore();
-
-    // legs with shading
-    ctx.fillStyle = palette.cloth;
-    ctx.save();
-    ctx.translate(-8, h * 0.55);
-    ctx.rotate((legA * Math.PI) / 180);
-    roundRect(-5, 0, 11, h * 0.42, 3);
-    ctx.fill();
-    ctx.fillStyle = palette.clothHi;
-    ctx.fillRect(-4, 2, 3, h * 0.3);
-    ctx.restore();
-    ctx.save();
-    ctx.translate(8, h * 0.55);
-    ctx.rotate((-legA * Math.PI) / 180);
-    ctx.fillStyle = palette.cloth;
-    roundRect(-5, 0, 11, h * 0.42, 3);
-    ctx.fill();
-    ctx.restore();
-
-    // torso
-    const bodyGrad = ctx.createLinearGradient(-w * 0.3, h * 0.2, w * 0.3, h * 0.55);
-    bodyGrad.addColorStop(0, palette.clothHi);
-    bodyGrad.addColorStop(0.45, palette.cloth);
-    bodyGrad.addColorStop(1, "#0a1014");
-    ctx.fillStyle = bodyGrad;
-    roundRect(-w * 0.32, h * 0.2, w * 0.64, h * 0.4, 6);
-    ctx.fill();
-
-    // sash
-    ctx.fillStyle = palette.trim;
-    ctx.fillRect(-w * 0.34, h * 0.38, w * 0.68, 5);
-    if (isPlayer) {
-      ctx.beginPath();
-      ctx.moveTo(w * 0.28, h * 0.4);
-      ctx.quadraticCurveTo(w * 0.72, h * 0.52 + Math.sin(anim * 2) * 5, w * 0.5, h * 0.72);
-      ctx.strokeStyle = palette.trim;
-      ctx.lineWidth = 4;
-      ctx.lineCap = "round";
-      ctx.stroke();
+    if (sprite) {
+      const drawH = h;
+      const drawW = (sprite.width / sprite.height) * drawH;
+      ctx.drawImage(sprite, -drawW * 0.5, -drawH, drawW, drawH);
+    } else {
+      ctx.fillStyle = "#1a2428";
+      ctx.fillRect(-ent.w * 0.35, -h, ent.w * 0.7, h);
     }
 
-    // front arm / weapon
-    ctx.save();
-    ctx.translate(w * 0.22, h * 0.3);
-    ctx.rotate((armA * Math.PI) / 180);
-    ctx.fillStyle = palette.clothHi;
-    roundRect(-4, 0, 9, h * 0.26, 3);
-    ctx.fill();
-    if (pose === "attack" || attacking > 0 || (!isPlayer && ent.attackWind > 0 && ent.attackWind < 0.15)) {
-      ctx.strokeStyle = isPlayer ? "rgba(232,168,74,0.9)" : "rgba(255,110,80,0.75)";
+    // attack slash accent
+    if (attacking > 0 || (!isPlayer && ent.attackWind > 0 && ent.attackWind < 0.14)) {
+      ctx.strokeStyle = isPlayer ? "rgba(232,168,74,0.85)" : "rgba(255,120,80,0.7)";
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.arc(8, 8, 30, -1.1, 0.85);
+      ctx.arc(ent.w * 0.15, -h * 0.45, 36, -1.0, 0.9);
       ctx.stroke();
-      // blade tip flash
-      ctx.fillStyle = isPlayer ? "rgba(255,230,180,0.7)" : "rgba(255,160,120,0.55)";
-      ctx.beginPath();
-      ctx.arc(28, 18, 4, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (ent.type === "assassin" || isPlayer) {
-      // sheathed hint
-      ctx.fillStyle = "#1a1e22";
-      ctx.fillRect(2, 4, 4, 22);
-    }
-    ctx.restore();
-
-    // head
-    ctx.fillStyle = palette.mask;
-    ctx.beginPath();
-    ctx.ellipse(0, h * 0.14, w * 0.26, w * 0.28, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // mask wrap highlight
-    ctx.strokeStyle = palette.clothHi;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(0, h * 0.14, w * 0.26, 0.2, Math.PI - 0.2);
-    ctx.stroke();
-
-    // eyes — brighter read at distance
-    ctx.fillStyle = "rgba(0,0,0,0.55)";
-    ctx.fillRect(-14, h * 0.08, 28, 10);
-    ctx.shadowColor = palette.eye;
-    ctx.shadowBlur = 10;
-    ctx.fillStyle = palette.eye;
-    ctx.fillRect(-10, h * 0.1, 7, 4);
-    ctx.fillRect(4, h * 0.1, 7, 4);
-    ctx.shadowBlur = 0;
-    // nose bridge / mask fold
-    ctx.strokeStyle = "rgba(255,255,255,0.12)";
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(-w * 0.18, h * 0.2);
-    ctx.lineTo(w * 0.18, h * 0.2);
-    ctx.stroke();
-
-    // boss horns / crown
-    if (ent.type === "boss") {
-      ctx.fillStyle = palette.trim;
-      ctx.beginPath();
-      ctx.moveTo(-20, 6);
-      ctx.lineTo(-12, -22);
-      ctx.lineTo(-4, 8);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(20, 6);
-      ctx.lineTo(12, -22);
-      ctx.lineTo(4, 8);
-      ctx.fill();
-      // shoulder plates
-      ctx.fillStyle = palette.clothHi;
-      roundRect(-w * 0.42, h * 0.22, 16, 14, 3);
-      ctx.fill();
-      roundRect(w * 0.26, h * 0.22, 16, 14, 3);
-      ctx.fill();
     }
 
-    if (ent.type === "monster") {
-      // bulk shoulders
-      ctx.fillStyle = palette.clothHi;
-      ctx.beginPath();
-      ctx.ellipse(-w * 0.3, h * 0.28, 12, 10, 0, 0, Math.PI * 2);
-      ctx.ellipse(w * 0.3, h * 0.28, 12, 10, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // enemy HP
     if (!isPlayer && ent.hp < ent.maxHp) {
       ctx.globalAlpha = 1;
       ctx.fillStyle = "rgba(0,0,0,0.55)";
-      ctx.fillRect(-22, -14, 44, 6);
+      ctx.fillRect(-26, -h - 16, 52, 6);
       ctx.fillStyle = ent.type === "boss" ? "#e8a84a" : "#c23b3b";
-      ctx.fillRect(-22, -14, 44 * Math.max(0, ent.hp / ent.maxHp), 6);
+      ctx.fillRect(-26, -h - 16, 52 * Math.max(0, ent.hp / ent.maxHp), 6);
     }
 
     ctx.restore();
@@ -1388,5 +1107,21 @@
   player = makePlayer();
   player.x = 220;
   seedAmbient();
-  requestAnimationFrame(loop);
+
+  loadAllAssets().then(() => {
+    requestAnimationFrame(loop);
+  });
+  // draw loading frame until assets ready
+  (function waitBoot() {
+    if (assetsReady) return;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    ctx.fillStyle = "#070d12";
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = "#e8a84a";
+    ctx.font = "700 28px Teko, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("Chargement…", w / 2, h / 2);
+    requestAnimationFrame(waitBoot);
+  })();
 })();

@@ -2,6 +2,8 @@
 
 Jeu ninja vue de côté (HTML / CSS / Canvas + PWA). UI en français.
 
+Art: sprites peints réalistes (`assets/chars/`) et décors par zone (`assets/bg/` — dojo, forêt, toits, grotte, forteresse, arène boss).
+
 ## Lancer
 
 ```bash

@@ -62,8 +62,8 @@ html, body {
   padding: calc(24px + var(--safe-t)) 20px calc(28px + var(--safe-b));
   text-align: center;
   background:
-    linear-gradient(180deg, rgba(6, 16, 24, 0.55) 0%, rgba(6, 16, 24, 0.78) 100%);
-  backdrop-filter: blur(2px);
+    linear-gradient(180deg, rgba(6, 16, 24, 0.42) 0%, rgba(6, 16, 24, 0.72) 100%);
+  backdrop-filter: blur(3px);
   pointer-events: auto;
 }
 
