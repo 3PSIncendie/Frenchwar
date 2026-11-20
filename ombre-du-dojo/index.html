@@ -13,6 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Teko:wght@500;700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
   <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
 </head>
 <body>
   <div id="app">
@@ -20,19 +21,18 @@
 
     <div id="hud" class="hidden">
       <div class="hud-left">
-        <div class="brand-mini">OMBRE</div>
-        <div class="bar-wrap">
+        <div class="bar-wrap" title="Vie">
           <div id="hp-bar" class="bar-fill"></div>
         </div>
-        <div id="hp-text" class="hud-meta">♥ 100</div>
+        <div id="hp-text" class="hud-meta">120</div>
       </div>
       <div class="hud-center">
-        <div id="level-label">Niveau 1</div>
-        <div id="wave-label">Ennemis restants: 0</div>
+        <div id="level-label">Niv. 1</div>
+        <div class="hud-wave"><span class="wave-ico">⚔</span> <span id="wave-label">0</span></div>
       </div>
       <div class="hud-right">
-        <div id="gold-hud">◆ 0</div>
-        <div id="special-ready" class="special-chip">Special prêt</div>
+        <div class="gold-row"><span class="gold-ico">◆</span> <span id="gold-hud">0</span></div>
+        <div id="special-ready" class="special-chip">Spécial</div>
       </div>
     </div>
 
@@ -42,9 +42,11 @@
         <button type="button" class="ctrl" data-act="right" aria-label="Droite">▶</button>
       </div>
       <div class="ctrl-cluster right">
-        <button type="button" class="ctrl jump" data-act="jump" aria-label="Sauter">↑</button>
+        <div class="ctrl-stack">
+          <button type="button" class="ctrl jump" data-act="jump" aria-label="Sauter">↑</button>
+          <button type="button" class="ctrl special" data-act="special" aria-label="Spécial">◎</button>
+        </div>
         <button type="button" class="ctrl attack" data-act="attack" aria-label="Attaquer">⚔</button>
-        <button type="button" class="ctrl special" data-act="special" aria-label="Spécial">◎</button>
       </div>
     </div>
 
@@ -57,7 +59,7 @@
         <button type="button" id="btn-play" class="btn primary">Jouer</button>
         <button type="button" id="btn-continue" class="btn ghost hidden">Continuer</button>
       </div>
-      <p class="hint">Touches: ←→ / Q D · Espace/Z sauter · A/J attaquer · E/L spécial</p>
+      <p class="hint">Gauche : déplacer · Droite : sauter / attaquer / spécial</p>
     </section>
 
     <section id="screen-shop" class="screen hidden">
