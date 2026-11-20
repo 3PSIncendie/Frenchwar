@@ -143,8 +143,8 @@
       y: groundY,
       vx: 0,
       vy: 0,
-      w: 40,
-      h: 58,
+      w: 52,
+      h: 74,
       facing: 1,
       onGround: true,
       attacking: 0,
@@ -200,8 +200,8 @@
         type,
         x,
         y: groundY,
-        w: 34,
-        h: 52,
+        w: 44,
+        h: 66,
         vx: 0,
         vy: 0,
         hp: Math.round(18 * sc),
@@ -222,8 +222,8 @@
         type,
         x,
         y: groundY,
-        w: 52,
-        h: 66,
+        w: 64,
+        h: 82,
         vx: 0,
         vy: 0,
         hp: Math.round(55 * sc),
@@ -245,8 +245,8 @@
         type: "boss",
         x: cameraX + window.innerWidth * 0.65,
         y: groundY,
-        w: 78,
-        h: 96,
+        w: 96,
+        h: 118,
         vx: 0,
         vy: 0,
         hp: Math.round(180 * bossSc),
@@ -465,13 +465,13 @@
     player.attacking = 0.26;
     player.attackCd = 0.28;
     player.pose = "attack";
-    const range = 58;
+    const range = 68;
     const ax = player.x + player.facing * (player.w * 0.35 + range * 0.5);
     enemies.forEach((e) => {
       if (e.hp <= 0) return;
       const dx = e.x - ax;
       const dy = e.y - player.y;
-      if (Math.abs(dx) < range + e.w * 0.35 && Math.abs(dy) < 55) {
+      if (Math.abs(dx) < range + e.w * 0.35 && Math.abs(dy) < 70) {
         hurtEnemy(e, player.dmg, player.facing * 150);
       }
     });
@@ -1136,15 +1136,22 @@
     ctx.arc(0, h * 0.14, w * 0.26, 0.2, Math.PI - 0.2);
     ctx.stroke();
 
-    // eyes
-    const eyeGlow = ctx.createRadialGradient(-6, h * 0.12, 0, -6, h * 0.12, 10);
-    eyeGlow.addColorStop(0, palette.eye);
-    eyeGlow.addColorStop(1, "transparent");
-    ctx.fillStyle = eyeGlow;
-    ctx.fillRect(-14, h * 0.06, 12, 12);
+    // eyes — brighter read at distance
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    ctx.fillRect(-14, h * 0.08, 28, 10);
+    ctx.shadowColor = palette.eye;
+    ctx.shadowBlur = 10;
     ctx.fillStyle = palette.eye;
-    ctx.fillRect(-9, h * 0.11, 5, 3);
-    ctx.fillRect(4, h * 0.11, 5, 3);
+    ctx.fillRect(-10, h * 0.1, 7, 4);
+    ctx.fillRect(4, h * 0.1, 7, 4);
+    ctx.shadowBlur = 0;
+    // nose bridge / mask fold
+    ctx.strokeStyle = "rgba(255,255,255,0.12)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-w * 0.18, h * 0.2);
+    ctx.lineTo(w * 0.18, h * 0.2);
+    ctx.stroke();
 
     // boss horns / crown
     if (ent.type === "boss") {
