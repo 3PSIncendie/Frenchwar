@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#0a1218" />
+  <meta name="description" content="Ombre du Dojo — ninja, combats, boutique et boss." />
+  <title>Ombre du Dojo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Teko:wght@500;700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="manifest" href="manifest.webmanifest" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="game" width="900" height="520" aria-label="Zone de jeu"></canvas>
+
+    <div id="hud" class="hidden">
+      <div class="hud-left">
+        <div class="brand-mini">OMBRE</div>
+        <div class="bar-wrap">
+          <div id="hp-bar" class="bar-fill"></div>
+        </div>
+        <div id="hp-text" class="hud-meta">♥ 100</div>
+      </div>
+      <div class="hud-center">
+        <div id="level-label">Niveau 1</div>
+        <div id="wave-label">Ennemis restants: 0</div>
+      </div>
+      <div class="hud-right">
+        <div id="gold-hud">◆ 0</div>
+        <div id="special-ready" class="special-chip">Special prêt</div>
+      </div>
+    </div>
+
+    <div id="controls" class="hidden">
+      <div class="ctrl-cluster left">
+        <button type="button" class="ctrl" data-act="left" aria-label="Gauche">◀</button>
+        <button type="button" class="ctrl" data-act="right" aria-label="Droite">▶</button>
+      </div>
+      <div class="ctrl-cluster right">
+        <button type="button" class="ctrl jump" data-act="jump" aria-label="Sauter">↑</button>
+        <button type="button" class="ctrl attack" data-act="attack" aria-label="Attaquer">⚔</button>
+        <button type="button" class="ctrl special" data-act="special" aria-label="Spécial">◎</button>
+      </div>
+    </div>
+
+    <section id="screen-menu" class="screen">
+      <div class="menu-glow"></div>
+      <p class="eyebrow">JEUX ÉMILE</p>
+      <h1>Ombre du Dojo</h1>
+      <p class="tagline">Affronte assassins, monstres et boss. Améliore ton ninja entre les niveaux.</p>
+      <div class="menu-actions">
+        <button type="button" id="btn-play" class="btn primary">Jouer</button>
+        <button type="button" id="btn-continue" class="btn ghost hidden">Continuer</button>
+      </div>
+      <p class="hint">Touches: ←→ / Q D · Espace/Z sauter · A/J attaquer · E/L spécial</p>
+    </section>
+
+    <section id="screen-shop" class="screen hidden">
+      <h2>Boutique du Dojo</h2>
+      <p class="shop-gold">Or disponible: <span id="shop-gold">0</span> ◆</p>
+      <p class="shop-level">Prochain niveau: <span id="shop-next">2</span></p>
+      <div id="shop-list" class="shop-list"></div>
+      <div class="menu-actions">
+        <button type="button" id="btn-next-level" class="btn primary">Niveau suivant</button>
+        <button type="button" id="btn-menu-from-shop" class="btn ghost">Menu</button>
+      </div>
+    </section>
+
+    <section id="screen-pause" class="screen hidden">
+      <h2>Pause</h2>
+      <div class="menu-actions">
+        <button type="button" id="btn-resume" class="btn primary">Reprendre</button>
+        <button type="button" id="btn-quit" class="btn ghost">Abandonner</button>
+      </div>
+    </section>
+
+    <section id="screen-over" class="screen hidden">
+      <h2 id="over-title">Défaite</h2>
+      <p id="over-msg" class="tagline"></p>
+      <div class="menu-actions">
+        <button type="button" id="btn-retry" class="btn primary">Réessayer le niveau</button>
+        <button type="button" id="btn-shop-after" class="btn ghost">Boutique</button>
+        <button type="button" id="btn-menu-over" class="btn ghost">Menu</button>
+      </div>
+    </section>
+
+    <button type="button" id="btn-pause" class="pause-btn hidden" aria-label="Pause">❚❚</button>
+  </div>
+  <script src="game.js"></script>
+</body>
+</html>
