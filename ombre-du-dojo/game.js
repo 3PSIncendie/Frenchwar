@@ -57,6 +57,23 @@
   let zoneName = "dojo";
   let assetsReady = false;
 
+  // Japanese painted backdrops — cycle to a new one on every enemy kill
+  const BG_CYCLE = [
+    "bgForest",
+    "bgBamboo",
+    "bgSakura",
+    "bgTemple",
+    "bgPagoda",
+    "bgDojo",
+    "bgRooftops",
+    "bgCastle",
+  ];
+  let bgCycleIndex = 0;
+  let activeBgKey = "bgForest";
+  let prevBgKey = "bgForest";
+  let bgBlend = 1; // 1 = fully on activeBgKey
+  let bgFlash = 0; // boss wipe flash
+
   const ASSETS = {
     ninjaIdle: "assets/chars/ninja-idle.png",
     ninjaRun: "assets/chars/ninja-run.png",
@@ -71,6 +88,11 @@
     bgCave: "assets/bg/bg-cave.jpg",
     bgFortress: "assets/bg/bg-fortress.jpg",
     bgBoss: "assets/bg/bg-boss.jpg",
+    bgBamboo: "assets/bg/bg-bamboo.jpg",
+    bgSakura: "assets/bg/bg-sakura.jpg",
+    bgTemple: "assets/bg/bg-temple.jpg",
+    bgCastle: "assets/bg/bg-castle.jpg",
+    bgPagoda: "assets/bg/bg-pagoda.jpg",
   };
   const img = {};
 
@@ -102,6 +124,52 @@
       fortress: "bgFortress",
     };
     return map[zone] || "bgDojo";
+  }
+
+  function swapBackdrop(nextKey, strong) {
+    if (!nextKey || nextKey === activeBgKey) {
+      // still force a visible swap if same: pick next in cycle
+      if (!strong) {
+        bgCycleIndex = (bgCycleIndex + 1) % BG_CYCLE.length;
+        nextKey = BG_CYCLE[bgCycleIndex];
+      }
+    }
+    if (nextKey === activeBgKey && !strong) return;
+    prevBgKey = activeBgKey;
+    activeBgKey = nextKey;
+    bgBlend = 0;
+    if (strong) {
+      bgFlash = 1;
+      shake = Math.max(shake, 18);
+    }
+    // refresh ambient to match new zone vibe
+    const zoneHint =
+      nextKey === "bgForest" || nextKey === "bgBamboo" || nextKey === "bgSakura" || nextKey === "bgPagoda"
+        ? "forest"
+        : nextKey === "bgCave"
+          ? "cave"
+          : nextKey === "bgRooftops" || nextKey === "bgTemple"
+            ? "rooftops"
+            : nextKey === "bgFortress" || nextKey === "bgBoss" || nextKey === "bgCastle"
+              ? "fortress"
+              : "dojo";
+    zoneName = zoneHint;
+    seedAmbient();
+  }
+
+  function cycleBackdropOnKill(enemyType) {
+    if (enemyType === "boss") {
+      swapBackdrop("bgBoss", true);
+      return;
+    }
+    bgCycleIndex = (bgCycleIndex + 1) % BG_CYCLE.length;
+    // skip if we'd land on the same (shouldn't with increment)
+    let next = BG_CYCLE[bgCycleIndex];
+    if (next === activeBgKey) {
+      bgCycleIndex = (bgCycleIndex + 1) % BG_CYCLE.length;
+      next = BG_CYCLE[bgCycleIndex];
+    }
+    swapBackdrop(next, false);
   }
 
   const $ = (id) => document.getElementById(id);
@@ -349,6 +417,17 @@
     levelClearTimer = 0;
     shake = 0;
     hitStop = 0;
+    bgFlash = 0;
+    bgBlend = 1;
+    if (isBossLevel(save.level)) {
+      activeBgKey = "bgBoss";
+      prevBgKey = "bgBoss";
+      bgCycleIndex = 0;
+    } else {
+      bgCycleIndex = (save.level - 1) % BG_CYCLE.length;
+      activeBgKey = BG_CYCLE[bgCycleIndex];
+      prevBgKey = activeBgKey;
+    }
     seedAmbient();
     state = "play";
     showScreen(null);
@@ -501,6 +580,7 @@
         });
       }
       shake = Math.max(shake, e.type === "boss" ? 16 : 6);
+      cycleBackdropOnKill(e.type);
     }
   }
 
@@ -744,6 +824,11 @@
       if (a.y > groundY - 20) a.y = 60;
     });
     if (shake > 0) shake = Math.max(0, shake - dt * 40);
+    if (bgBlend < 1) {
+      const speed = activeBgKey === "bgBoss" || bgFlash > 0 ? 2.4 : 3.2;
+      bgBlend = Math.min(1, bgBlend + dt * speed);
+    }
+    if (bgFlash > 0) bgFlash = Math.max(0, bgFlash - dt * 1.6);
   }
 
   function update(dt) {
@@ -796,30 +881,32 @@
     ctx.globalAlpha = 1;
   }
 
-  function drawBackground(w, h) {
-    const boss = (bossFight || isBossLevel(save.level)) && state === "play";
-    const key = bgKeyForZone(zoneName, boss);
-    const bg = img[key] || img.bgDojo;
-    const far = img[bgKeyForZone(zoneName, false)] || bg;
+  function drawBgImage(key, w, h, alpha) {
+    const bg = img[key] || img.bgForest || img.bgDojo;
+    if (!bg || alpha <= 0.01) return;
+    // far soft twin
+    ctx.globalAlpha = alpha * 0.4;
+    const farH = h * 0.95;
+    const farW = (bg.width / bg.height) * farH * 1.12;
+    const ox = -((cameraX * 0.12) % farW);
+    for (let x = ox - farW; x < w + farW; x += farW - 1) {
+      ctx.drawImage(bg, x, h * 0.05, farW, farH);
+    }
+    ctx.globalAlpha = alpha;
+    drawParallaxLayer(bg, w, h, 0.35, 1.0, alpha);
+    ctx.globalAlpha = 1;
+  }
 
+  function drawBackground(w, h) {
     ctx.fillStyle = "#070d12";
     ctx.fillRect(0, 0, w, h);
 
-    // far soft layer (stretched / dim)
-    if (far) {
-      ctx.globalAlpha = 0.45;
-      const farH = h * 0.95;
-      const farW = (far.width / far.height) * farH * 1.15;
-      const ox = -((cameraX * 0.12) % farW);
-      for (let x = ox - farW; x < w + farW; x += farW - 1) {
-        ctx.drawImage(far, x, h * 0.05, farW, farH);
-      }
-      ctx.globalAlpha = 1;
-    }
-
-    // main painted environment
-    if (bg) {
-      drawParallaxLayer(bg, w, h, 0.35, 1.0, 1);
+    // Crossfade between previous and active painted backdrop on kills
+    if (bgBlend < 1 && prevBgKey !== activeBgKey) {
+      drawBgImage(prevBgKey, w, h, 1 - bgBlend);
+      drawBgImage(activeBgKey, w, h, bgBlend);
+    } else {
+      drawBgImage(activeBgKey, w, h, 1);
     }
 
     // ground strip for feet
@@ -830,12 +917,17 @@
     ctx.fillStyle = groundGrad;
     ctx.fillRect(0, groundY - 8, w, h - groundY + 8);
 
-    if (boss) {
+    if (activeBgKey === "bgBoss" || bgFlash > 0) {
       const rim = ctx.createRadialGradient(w * 0.5, groundY - 30, 10, w * 0.5, groundY, w * 0.6);
-      rim.addColorStop(0, "rgba(232,120,40,0.28)");
+      rim.addColorStop(0, `rgba(232,120,40,${0.2 + bgFlash * 0.35})`);
       rim.addColorStop(1, "transparent");
       ctx.fillStyle = rim;
       ctx.fillRect(0, groundY - 180, w, 180);
+    }
+
+    if (bgFlash > 0) {
+      ctx.fillStyle = `rgba(255, 200, 120, ${bgFlash * 0.45})`;
+      ctx.fillRect(0, 0, w, h);
     }
 
     ambient.forEach((a) => {
@@ -1107,6 +1199,12 @@
   player = makePlayer();
   player.x = 220;
   seedAmbient();
+
+  // Tiny debug surface for demos / QA (kill → décor cycle)
+  window.OmbreDuDojo = {
+    cycleOnKill: (type) => cycleBackdropOnKill(type || "assassin"),
+    getBg: () => activeBgKey,
+  };
 
   loadAllAssets().then(() => {
     requestAnimationFrame(loop);

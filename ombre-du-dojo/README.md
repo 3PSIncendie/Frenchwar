@@ -2,7 +2,7 @@
 
 Jeu ninja vue de côté (HTML / CSS / Canvas + PWA). UI en français.
 
-Art: sprites peints réalistes (`assets/chars/`) et décors par zone (`assets/bg/` — dojo, forêt, toits, grotte, forteresse, arène boss).
+Art: sprites peints réalistes (`assets/chars/`) et décors japonais peints (`assets/bg/` — forêt, bambou, sakura, temple, pagode, dojo, toits, château, arène boss). Le décor change à chaque ennemi tué.
 
 ## Lancer
 
