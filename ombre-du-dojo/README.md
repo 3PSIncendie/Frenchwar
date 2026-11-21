@@ -1,6 +1,6 @@
-# Ombre du Dojo — Arène
+# Ombre du Dojo — Shinobi
 
-Combat ninja **vue du dessus** (style Brawl Stars) : joystick + attaque/spécial, vagues, boutique, boss.
+Combat **vue de côté** façon shinobi : plateformes, katana + coup de pied, décors japonais, boutique (tenues / armes / améliorations).
 
 ## Lancer
 
@@ -12,11 +12,11 @@ Ouvrir `http://127.0.0.1:8766/`
 
 ## Jouer
 
-**Jouer** / **Continuer** → élimine les ennemis dans l’arène → **Boutique** → **Vague suivante**. Boss tous les 5 niveaux. L’arène japonaise change à chaque kill.
+**Jouer** → ennemis arrivent de la droite → plateformes pour sauter → boutique entre les niveaux. Boss tous les 5 niveaux. Le décor change à chaque kill.
 
 ## Contrôles
 
-- Toucher : joystick gauche · ⚔ attaque · ◎ spécial
-- Clavier : ZQSD / flèches · J / Espace attaque · L / E spécial · Esc pause
+- Toucher : ◀▶ · ↑ saut · ⚔ katana · 🦵 pied
+- Clavier : Q D · Espace · J · K · Esc pause
 
 Progression : `localStorage` clé `ombre-du-dojo-v1`.

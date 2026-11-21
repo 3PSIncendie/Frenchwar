@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="theme-color" content="#1a2a18" />
-  <meta name="description" content="Ombre du Dojo — arène ninja style Brawl Stars." />
+  <meta name="theme-color" content="#0a1218" />
+  <meta name="description" content="Ombre du Dojo — shinobi vue de côté, plateformes, katana et coups de pied." />
   <title>Ombre du Dojo</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -17,7 +17,7 @@
 </head>
 <body>
   <div id="app">
-    <canvas id="game" width="720" height="1280" aria-label="Arène"></canvas>
+    <canvas id="game" width="900" height="520" aria-label="Zone de jeu"></canvas>
 
     <div id="hud" class="hidden">
       <div class="hud-left">
@@ -30,17 +30,21 @@
       </div>
       <div class="hud-right">
         <div class="gold-row">◆ <span id="gold-hud">0</span></div>
-        <div id="special-ready" class="special-chip">Spécial</div>
+        <div id="weapon-chip" class="weapon-chip">Katana</div>
       </div>
     </div>
 
     <div id="controls" class="hidden">
-      <div id="stick" class="stick" aria-label="Joystick">
-        <div id="stick-knob" class="stick-knob"></div>
+      <div class="ctrl-cluster left">
+        <button type="button" class="ctrl" data-act="left" aria-label="Gauche">◀</button>
+        <button type="button" class="ctrl" data-act="right" aria-label="Droite">▶</button>
       </div>
-      <div class="act-cluster">
-        <button type="button" class="act special" id="btn-special" aria-label="Spécial">◎</button>
-        <button type="button" class="act attack" id="btn-attack" aria-label="Attaquer">⚔</button>
+      <div class="ctrl-cluster right">
+        <div class="ctrl-stack">
+          <button type="button" class="ctrl jump" data-act="jump" aria-label="Sauter">↑</button>
+          <button type="button" class="ctrl kick" data-act="kick" aria-label="Coup de pied">🦵</button>
+        </div>
+        <button type="button" class="ctrl attack" data-act="attack" aria-label="Katana">⚔</button>
       </div>
     </div>
 
@@ -48,21 +52,26 @@
       <div class="menu-glow"></div>
       <p class="eyebrow">JEUX ÉMILE</p>
       <h1>Ombre du Dojo</h1>
-      <p class="tagline">Arène ninja vue du dessus — vague après vague, boutique et boss.</p>
+      <p class="tagline">Shinobi vue de côté — plateformes, katana, coups de pied, tenues et armes.</p>
       <div class="menu-actions">
         <button type="button" id="btn-play" class="btn primary">Jouer</button>
         <button type="button" id="btn-continue" class="btn ghost hidden">Continuer</button>
       </div>
-      <p class="hint">Joystick gauche · Attaque / Spécial à droite · Clavier : ZQSD + J / L</p>
+      <p class="hint">◀▶ · ↑ saut · ⚔ katana · 🦵 pied · Clavier : Q D · Espace · J · K</p>
     </section>
 
     <section id="screen-shop" class="screen hidden">
       <h2>Boutique du Dojo</h2>
-      <p class="shop-gold">Or disponible: <span id="shop-gold">0</span> ◆</p>
+      <p class="shop-gold">Or: <span id="shop-gold">0</span> ◆</p>
       <p class="shop-level">Prochain niveau: <span id="shop-next">2</span></p>
+      <div class="shop-tabs">
+        <button type="button" class="tab active" data-tab="upgrades">Améliorations</button>
+        <button type="button" class="tab" data-tab="outfits">Tenues</button>
+        <button type="button" class="tab" data-tab="weapons">Armes</button>
+      </div>
       <div id="shop-list" class="shop-list"></div>
       <div class="menu-actions">
-        <button type="button" id="btn-next-level" class="btn primary">Vague suivante</button>
+        <button type="button" id="btn-next-level" class="btn primary">Niveau suivant</button>
         <button type="button" id="btn-menu-from-shop" class="btn ghost">Menu</button>
       </div>
     </section>
