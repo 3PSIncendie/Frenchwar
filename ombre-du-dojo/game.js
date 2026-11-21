@@ -317,11 +317,16 @@
   }
 
   function showScreen(name) {
-    Object.entries(screens).forEach(([k, el]) => el.classList.toggle("hidden", k !== name));
+    Object.entries(screens).forEach(([k, el]) => {
+      if (el) el.classList.toggle("hidden", k !== name);
+    });
     const playing = name === null;
-    $("hud").classList.toggle("hidden", !playing);
-    $("controls").classList.toggle("hidden", !playing);
-    $("btn-pause").classList.toggle("hidden", !playing);
+    const hud = $("hud");
+    const controls = $("controls");
+    const pause = $("btn-pause");
+    if (hud) hud.classList.toggle("hidden", !playing);
+    if (controls) controls.classList.toggle("hidden", !playing);
+    if (pause) pause.classList.toggle("hidden", !playing);
   }
 
   function updateContinueBtn() {
@@ -400,7 +405,8 @@
   function spawnEnemy(type) {
     const lv = save.level;
     const sc = enemyScale(lv);
-    const x = cameraX + window.innerWidth + 80 + Math.random() * 40;
+    // Enter just past the right edge of the camera so they are visible quickly.
+    const x = Math.min(LEVEL_W - 60, cameraX + window.innerWidth * 0.92 + Math.random() * 40);
     const gy = groundYAt(x);
     const defs = {
       bandit: { w: 64, h: 112, hp: 24, dmg: 7, speed: 130, gold: 12, sprite: "bandit" },
@@ -449,7 +455,7 @@
     floatTexts = [];
     cameraX = 0;
     spawnQueue = buildSpawnQueue(save.level);
-    spawnTimer = 1;
+    spawnTimer = 0.35;
     clearTimer = 0;
     shake = 0;
     hitStop = 0;
@@ -460,12 +466,18 @@
 
   function updateHud() {
     if (!player) return;
-    $("hp-bar").style.transform = `scaleX(${Math.max(0, player.hp / player.maxHp)})`;
-    $("hp-text").textContent = `${Math.ceil(player.hp)}`;
-    $("gold-hud").textContent = `${save.gold}`;
-    $("level-label").textContent = isBossLevel(save.level) ? `Boss ${save.level}` : `Niv. ${save.level}`;
-    $("wave-label").textContent = `${enemies.filter((e) => e.hp > 0).length + spawnQueue.length}`;
-    $("weapon-chip").textContent = weaponStats().name;
+    const hpBar = $("hp-bar");
+    const hpText = $("hp-text");
+    const gold = $("gold-hud");
+    const level = $("level-label");
+    const wave = $("wave-label");
+    const weapon = $("weapon-chip");
+    if (hpBar) hpBar.style.transform = `scaleX(${Math.max(0, player.hp / player.maxHp)})`;
+    if (hpText) hpText.textContent = `${Math.ceil(player.hp)}`;
+    if (gold) gold.textContent = `${save.gold}`;
+    if (level) level.textContent = isBossLevel(save.level) ? `Boss ${save.level}` : `Niv. ${save.level}`;
+    if (wave) wave.textContent = `${enemies.filter((e) => e.hp > 0).length + spawnQueue.length}`;
+    if (weapon) weapon.textContent = weaponStats().name;
   }
 
   function upgradeCost(id) {
@@ -882,12 +894,14 @@
   }
 
   function drawPlatformsDebugOptional() {
-    // subtle ledge highlights so altimetry reads
+    // ledge highlights so platforms read against painted décor
     platformsWorld().forEach((p) => {
       const sx = p.x - cameraX;
-      ctx.fillStyle = "rgba(232,168,74,0.18)";
-      ctx.fillRect(sx, p.y, p.w, 6);
-      ctx.fillStyle = "rgba(255,255,255,0.12)";
+      ctx.fillStyle = "rgba(8,14,18,0.45)";
+      ctx.fillRect(sx, p.y + 2, p.w, 8);
+      ctx.fillStyle = "rgba(232,168,74,0.42)";
+      ctx.fillRect(sx, p.y, p.w, 5);
+      ctx.fillStyle = "rgba(255,236,190,0.55)";
       ctx.fillRect(sx, p.y, p.w, 2);
     });
   }
@@ -910,9 +924,10 @@
     const drawH = ent.h;
     if (spr) {
       const drawW = (spr.width / spr.height) * drawH;
+      // soft contact shadow + crisp sprite
       ctx.drawImage(spr, -drawW * 0.5, -drawH, drawW, drawH);
     } else {
-      ctx.fillStyle = "#222";
+      ctx.fillStyle = isPlayer ? "#3a4650" : "#6a3a28";
       ctx.fillRect(-ent.w * 0.3, -ent.h, ent.w * 0.6, ent.h);
     }
 
