@@ -2,13 +2,19 @@
 
 Prototype jouable portrait (HTML Canvas) : maintien de l’ordre vs Black Bloc, civils protégés.
 
+Aussi dans ce dépôt : **[Ombre du Dojo](ombre-du-dojo/)** — jeu ninja vue de côté (mobile / PWA).
+
 ## Lancer
 
 ```bash
-cd /agent/french-war && python3 -m http.server 8765 --bind 127.0.0.1
+# FRENCH WAR (racine)
+python3 -m http.server 8765 --bind 127.0.0.1
+
+# Ombre du Dojo
+cd ombre-du-dojo && python3 -m http.server 8766 --bind 127.0.0.1
 ```
 
-Ouvrir `http://127.0.0.1:8765/`
+Ouvrir `http://127.0.0.1:8765/` (FRENCH WAR) ou `http://127.0.0.1:8766/` (Ombre du Dojo)
 
 ## Contrôles
 
