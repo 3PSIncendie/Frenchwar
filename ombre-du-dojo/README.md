@@ -1,8 +1,6 @@
-# Ombre du Dojo
+# Ombre du Dojo — Arène
 
-Jeu ninja vue de côté (HTML / CSS / Canvas + PWA). UI en français.
-
-Art: sprites peints réalistes (`assets/chars/`) et décors japonais peints (`assets/bg/` — forêt, bambou, sakura, temple, pagode, dojo, toits, château, arène boss). Le décor change à chaque ennemi tué.
+Combat ninja **vue du dessus** (style Brawl Stars) : joystick + attaque/spécial, vagues, boutique, boss.
 
 ## Lancer
 
@@ -14,11 +12,11 @@ Ouvrir `http://127.0.0.1:8766/`
 
 ## Jouer
 
-Menu → **Jouer** (nouvelle partie) ou **Continuer** (boutique avec progression). Combats en vue de côté ; boutique entre les niveaux ; boss tous les 5 niveaux.
+**Jouer** / **Continuer** → élimine les ennemis dans l’arène → **Boutique** → **Vague suivante**. Boss tous les 5 niveaux. L’arène japonaise change à chaque kill.
 
 ## Contrôles
 
-- Toucher : ◀ ▶ · ↑ saut · ⚔ attaque · ◎ spécial
-- Clavier : ←→ / Q D · Espace/Z · A/J · E/L · Esc pause
+- Toucher : joystick gauche · ⚔ attaque · ◎ spécial
+- Clavier : ZQSD / flèches · J / Espace attaque · L / E spécial · Esc pause
 
 Progression : `localStorage` clé `ombre-du-dojo-v1`.

@@ -4,173 +4,66 @@
   const STORAGE_KEY = "ombre-du-dojo-v1";
   const canvas = document.getElementById("game");
   const ctx = canvas.getContext("2d");
+  const ARENA = 900;
 
   const UPGRADES = [
-    { id: "hp", name: "Vitalité", desc: "+25 PV max et soins partiels", base: 35, step: 20, max: 8 },
-    { id: "dmg", name: "Lame", desc: "+4 dégâts de mêlée", base: 40, step: 25, max: 10 },
-    { id: "spd", name: "Agilité", desc: "+8% vitesse de course", base: 45, step: 30, max: 6 },
-    { id: "jump", name: "Ressort", desc: "Saut un peu plus haut", base: 40, step: 28, max: 4 },
-    { id: "special", name: "Shuriken", desc: "Spécial plus fort / recharge plus vite", base: 55, step: 35, max: 7 },
+    { id: "hp", name: "Vitalité", desc: "+25 PV max", base: 35, step: 20, max: 8 },
+    { id: "dmg", name: "Lame", desc: "+4 dégâts", base: 40, step: 25, max: 10 },
+    { id: "spd", name: "Agilité", desc: "+8% vitesse", base: 45, step: 30, max: 6 },
+    { id: "range", name: "Portée", desc: "Attaque plus longue", base: 40, step: 28, max: 5 },
+    { id: "special", name: "Shuriken", desc: "Spécial plus fort / plus rapide", base: 55, step: 35, max: 7 },
     { id: "armor", name: "Armure", desc: "-8% dégâts reçus", base: 50, step: 32, max: 5 },
   ];
 
-  const ZONES = ["dojo", "forest", "rooftops", "cave", "fortress"];
+  const ARENA_CYCLE = ["dojo", "sakura", "bamboo", "castle", "boss"];
+
+  const ASSETS = {
+    ninja: "assets/chars/td-ninja.png",
+    assassin: "assets/chars/td-assassin.png",
+    monster: "assets/chars/td-monster.png",
+    boss: "assets/chars/td-boss.png",
+    arenaDojo: "assets/arenas/arena-dojo.jpg",
+    arenaSakura: "assets/arenas/arena-sakura.jpg",
+    arenaBamboo: "assets/arenas/arena-bamboo.jpg",
+    arenaCastle: "assets/arenas/arena-castle.jpg",
+    arenaBoss: "assets/arenas/arena-boss.jpg",
+  };
+  const img = {};
+  let assetsReady = false;
 
   const defaultSave = () => ({
     gold: 0,
     level: 1,
-    upgrades: { hp: 0, dmg: 0, spd: 0, jump: 0, special: 0, armor: 0 },
+    upgrades: { hp: 0, dmg: 0, spd: 0, range: 0, special: 0, armor: 0 },
   });
 
   let save = load();
+  let state = "menu";
+  let player = null;
+  let enemies = [];
+  let projectiles = [];
+  let pickups = [];
+  let particles = [];
+  let floatTexts = [];
+  let spawnQueue = [];
+  let spawnTimer = 0;
+  let clearTimer = 0;
+  let shake = 0;
+  let time = 0;
+  let lastTs = 0;
+  let hitStop = 0;
+  let arenaKey = "dojo";
+  let arenaIdx = 0;
+  let view = { x: 0, y: 0, scale: 1 };
 
+  const move = { x: 0, y: 0 };
   const input = {
-    left: false,
-    right: false,
-    jump: false,
-    jumpPressed: false,
     attack: false,
     attackPressed: false,
     special: false,
     specialPressed: false,
+    keys: { up: false, down: false, left: false, right: false },
   };
-
-  let state = "menu";
-  let player = null;
-  let enemies = [];
-  let particles = [];
-  let ambient = [];
-  let pickups = [];
-  let projectiles = [];
-  let floatTexts = [];
-  let cameraX = 0;
-  let levelW = 1400;
-  let groundY = 420;
-  let spawnQueue = [];
-  let spawnTimer = 0;
-  let levelClearTimer = 0;
-  let shake = 0;
-  let time = 0;
-  let lastTs = 0;
-  let bossFight = false;
-  let hitStop = 0;
-  let zoneName = "dojo";
-  let assetsReady = false;
-
-  // Japanese painted backdrops — cycle to a new one on every enemy kill
-  const BG_CYCLE = [
-    "bgForest",
-    "bgBamboo",
-    "bgSakura",
-    "bgTemple",
-    "bgPagoda",
-    "bgDojo",
-    "bgRooftops",
-    "bgCastle",
-  ];
-  let bgCycleIndex = 0;
-  let activeBgKey = "bgForest";
-  let prevBgKey = "bgForest";
-  let bgBlend = 1; // 1 = fully on activeBgKey
-  let bgFlash = 0; // boss wipe flash
-
-  const ASSETS = {
-    ninjaIdle: "assets/chars/ninja-idle.png",
-    ninjaRun: "assets/chars/ninja-run.png",
-    ninjaAttack: "assets/chars/ninja-attack.png",
-    ninjaHurt: "assets/chars/ninja-hurt.png",
-    assassin: "assets/chars/assassin.png",
-    monster: "assets/chars/monster.png",
-    boss: "assets/chars/boss.png",
-    bgDojo: "assets/bg/bg-dojo.jpg",
-    bgForest: "assets/bg/bg-forest.jpg",
-    bgRooftops: "assets/bg/bg-rooftops.jpg",
-    bgCave: "assets/bg/bg-cave.jpg",
-    bgFortress: "assets/bg/bg-fortress.jpg",
-    bgBoss: "assets/bg/bg-boss.jpg",
-    bgBamboo: "assets/bg/bg-bamboo.jpg",
-    bgSakura: "assets/bg/bg-sakura.jpg",
-    bgTemple: "assets/bg/bg-temple.jpg",
-    bgCastle: "assets/bg/bg-castle.jpg",
-    bgPagoda: "assets/bg/bg-pagoda.jpg",
-  };
-  const img = {};
-
-  function loadImage(src) {
-    return new Promise((resolve) => {
-      const el = new Image();
-      el.onload = () => resolve(el);
-      el.onerror = () => resolve(null);
-      el.src = src;
-    });
-  }
-
-  async function loadAllAssets() {
-    const entries = Object.entries(ASSETS);
-    const loaded = await Promise.all(entries.map(([, src]) => loadImage(src)));
-    entries.forEach(([key], i) => {
-      img[key] = loaded[i];
-    });
-    assetsReady = true;
-  }
-
-  function bgKeyForZone(zone, boss) {
-    if (boss) return "bgBoss";
-    const map = {
-      dojo: "bgDojo",
-      forest: "bgForest",
-      rooftops: "bgRooftops",
-      cave: "bgCave",
-      fortress: "bgFortress",
-    };
-    return map[zone] || "bgDojo";
-  }
-
-  function swapBackdrop(nextKey, strong) {
-    if (!nextKey || nextKey === activeBgKey) {
-      // still force a visible swap if same: pick next in cycle
-      if (!strong) {
-        bgCycleIndex = (bgCycleIndex + 1) % BG_CYCLE.length;
-        nextKey = BG_CYCLE[bgCycleIndex];
-      }
-    }
-    if (nextKey === activeBgKey && !strong) return;
-    prevBgKey = activeBgKey;
-    activeBgKey = nextKey;
-    bgBlend = 0;
-    if (strong) {
-      bgFlash = 1;
-      shake = Math.max(shake, 18);
-    }
-    // refresh ambient to match new zone vibe
-    const zoneHint =
-      nextKey === "bgForest" || nextKey === "bgBamboo" || nextKey === "bgSakura" || nextKey === "bgPagoda"
-        ? "forest"
-        : nextKey === "bgCave"
-          ? "cave"
-          : nextKey === "bgRooftops" || nextKey === "bgTemple"
-            ? "rooftops"
-            : nextKey === "bgFortress" || nextKey === "bgBoss" || nextKey === "bgCastle"
-              ? "fortress"
-              : "dojo";
-    zoneName = zoneHint;
-    seedAmbient();
-  }
-
-  function cycleBackdropOnKill(enemyType) {
-    if (enemyType === "boss") {
-      swapBackdrop("bgBoss", true);
-      return;
-    }
-    bgCycleIndex = (bgCycleIndex + 1) % BG_CYCLE.length;
-    // skip if we'd land on the same (shouldn't with increment)
-    let next = BG_CYCLE[bgCycleIndex];
-    if (next === activeBgKey) {
-      bgCycleIndex = (bgCycleIndex + 1) % BG_CYCLE.length;
-      next = BG_CYCLE[bgCycleIndex];
-    }
-    swapBackdrop(next, false);
-  }
 
   const $ = (id) => document.getElementById(id);
   const screens = {
@@ -199,10 +92,48 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(save));
   }
 
+  function loadImage(src) {
+    return new Promise((resolve) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => resolve(null);
+      el.src = src;
+    });
+  }
+
+  async function loadAllAssets() {
+    const entries = Object.entries(ASSETS);
+    const loaded = await Promise.all(entries.map(([, s]) => loadImage(s)));
+    entries.forEach(([k], i) => {
+      img[k] = loaded[i];
+    });
+    assetsReady = true;
+  }
+
+  function arenaImg() {
+    const map = {
+      dojo: img.arenaDojo,
+      sakura: img.arenaSakura,
+      bamboo: img.arenaBamboo,
+      castle: img.arenaCastle,
+      boss: img.arenaBoss,
+    };
+    return map[arenaKey] || img.arenaDojo;
+  }
+
+  function cycleArena(strong) {
+    if (strong) {
+      arenaKey = "boss";
+      shake = Math.max(shake, 16);
+      return;
+    }
+    arenaIdx = (arenaIdx + 1) % (ARENA_CYCLE.length - 1); // skip boss in normal cycle
+    arenaKey = ARENA_CYCLE[arenaIdx];
+  }
+
   function upgradeCost(id) {
     const u = UPGRADES.find((x) => x.id === id);
-    const lv = save.upgrades[id] || 0;
-    return u.base + u.step * lv;
+    return u.base + u.step * (save.upgrades[id] || 0);
   }
 
   function statsFromSave() {
@@ -211,23 +142,17 @@
     return {
       maxHp,
       hp: maxHp,
-      dmg: 14 + u.dmg * 4,
-      speed: 235 * (1 + u.spd * 0.08),
-      jump: 440 + u.jump * 28,
-      specialDmg: 24 + u.special * 6,
-      specialCd: Math.max(1.2, 3.6 - u.special * 0.35),
+      dmg: 16 + u.dmg * 4,
+      speed: 210 * (1 + u.spd * 0.08),
+      range: 78 + u.range * 10,
+      specialDmg: 28 + u.special * 7,
+      specialCdMax: Math.max(1.2, 3.5 - u.special * 0.3),
       armor: Math.min(0.45, 0.05 + u.armor * 0.08),
     };
   }
 
-  function zoneForLevel(lv) {
-    return ZONES[Math.floor((Math.max(1, lv) - 1) / 5) % ZONES.length];
-  }
-
   function showScreen(name) {
-    Object.entries(screens).forEach(([k, el]) => {
-      el.classList.toggle("hidden", k !== name);
-    });
+    Object.entries(screens).forEach(([k, el]) => el.classList.toggle("hidden", k !== name));
     const playing = name === null;
     $("hud").classList.toggle("hidden", !playing);
     $("controls").classList.toggle("hidden", !playing);
@@ -235,9 +160,9 @@
   }
 
   function updateContinueBtn() {
-    const btn = $("btn-continue");
-    const hasProgress = save.level > 1 || save.gold > 0 || Object.values(save.upgrades).some((v) => v > 0);
-    btn.classList.toggle("hidden", !hasProgress);
+    const has =
+      save.level > 1 || save.gold > 0 || Object.values(save.upgrades).some((v) => v > 0);
+    $("btn-continue").classList.toggle("hidden", !has);
   }
 
   function resize() {
@@ -249,27 +174,24 @@
     canvas.style.width = w + "px";
     canvas.style.height = h + "px";
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    groundY = Math.min(h * 0.74, h - 150);
+    view.scale = Math.min(w, h) / ARENA;
   }
 
   function makePlayer() {
     const s = statsFromSave();
     return {
-      x: 120,
-      y: groundY,
+      x: ARENA / 2,
+      y: ARENA / 2,
+      r: 28,
       vx: 0,
       vy: 0,
-      w: 72,
-      h: 140,
-      facing: 1,
-      onGround: true,
-      attacking: 0,
+      facing: 0,
       attackCd: 0,
+      attacking: 0,
       specialCd: 0,
       invuln: 0,
       hitFlash: 0,
       anim: 0,
-      pose: "idle",
       ...s,
     };
   }
@@ -279,156 +201,105 @@
   }
 
   function enemyScale(lv) {
-    // Gentler early curve; ramps after level 4
-    if (lv <= 3) return 0.72 + (lv - 1) * 0.08;
+    if (lv <= 3) return 0.75 + (lv - 1) * 0.08;
     return 1 + (lv - 4) * 0.09;
   }
 
   function buildSpawnQueue(lv) {
-    const queue = [];
+    const q = [];
     if (isBossLevel(lv)) {
-      const minions = Math.max(1, 1 + Math.floor(lv / 10));
-      for (let i = 0; i < minions; i++) {
-        queue.push({ type: i % 2 === 0 ? "assassin" : "monster", delay: 0.7 + i * 0.5 });
-      }
-      queue.push({ type: "boss", delay: 1.4 });
-      return queue;
+      q.push({ type: "assassin", delay: 0.5 });
+      q.push({ type: "monster", delay: 0.8 });
+      q.push({ type: "boss", delay: 1.4 });
+      return q;
     }
-    const count = lv <= 2 ? 2 : lv <= 4 ? 3 : 3 + Math.floor((lv - 4) * 0.7);
+    const count = lv <= 2 ? 3 : lv <= 4 ? 4 : 4 + Math.floor((lv - 4) * 0.6);
     for (let i = 0; i < count; i++) {
-      const roll = Math.random();
       let type = "assassin";
-      if (lv >= 3 && roll > 0.62) type = "monster";
-      if (lv >= 8 && roll > 0.85) type = Math.random() > 0.5 ? "assassin" : "monster";
-      queue.push({ type, delay: 0.7 + i * 0.85 + Math.random() * 0.2 });
+      if (lv >= 3 && Math.random() > 0.55) type = "monster";
+      q.push({ type, delay: 0.55 + i * 0.55 });
     }
-    return queue;
+    return q;
   }
 
   function spawnEnemy(type) {
     const lv = save.level;
     const sc = enemyScale(lv);
-    const fromRight = Math.random() > 0.35;
-    const x = fromRight ? cameraX + window.innerWidth + 40 : cameraX - 40;
+    const ang = Math.random() * Math.PI * 2;
+    const dist = ARENA * 0.38 + Math.random() * 40;
+    const x = ARENA / 2 + Math.cos(ang) * dist;
+    const y = ARENA / 2 + Math.sin(ang) * dist;
     let e;
     if (type === "assassin") {
       e = {
         type,
         x,
-        y: groundY,
-        w: 64,
-        h: 128,
-        vx: 0,
-        vy: 0,
-        hp: Math.round(18 * sc),
-        maxHp: Math.round(18 * sc),
-        dmg: Math.round(5 * sc),
-        speed: 130 + lv * 4,
+        y,
+        r: 24,
+        hp: Math.round(20 * sc),
+        maxHp: Math.round(20 * sc),
+        dmg: Math.round(7 * sc),
+        speed: 125 + lv * 4,
         gold: 10 + lv,
-        facing: fromRight ? -1 : 1,
-        attackCd: 0.55,
-        attackWind: 0,
+        attackCd: 0.4,
+        facing: 0,
         hitFlash: 0,
         anim: Math.random() * 10,
-        pose: "idle",
-        onGround: true,
       };
     } else if (type === "monster") {
       e = {
         type,
         x,
-        y: groundY,
-        w: 90,
-        h: 150,
-        vx: 0,
-        vy: 0,
-        hp: Math.round(55 * sc),
-        maxHp: Math.round(55 * sc),
-        dmg: Math.round(11 * sc),
-        speed: 78 + lv * 2.5,
-        gold: 14 + lv * 2,
-        facing: fromRight ? -1 : 1,
-        attackCd: 1.0,
-        attackWind: 0,
+        y,
+        r: 34,
+        hp: Math.round(60 * sc),
+        maxHp: Math.round(60 * sc),
+        dmg: Math.round(12 * sc),
+        speed: 85 + lv * 2,
+        gold: 16 + lv * 2,
+        attackCd: 0.7,
+        facing: 0,
         hitFlash: 0,
         anim: Math.random() * 10,
-        pose: "idle",
-        onGround: true,
       };
     } else {
       const bossSc = sc * (1 + Math.floor(lv / 5) * 0.2);
       e = {
         type: "boss",
-        x: cameraX + window.innerWidth * 0.65,
-        y: groundY,
-        w: 128,
-        h: 175,
-        vx: 0,
-        vy: 0,
-        hp: Math.round(180 * bossSc),
-        maxHp: Math.round(180 * bossSc),
-        dmg: Math.round(15 * bossSc),
-        speed: 100 + lv * 2,
-        gold: 80 + lv * 15,
-        facing: -1,
-        attackCd: 1.1,
-        attackWind: 0,
+        x: ARENA / 2,
+        y: ARENA * 0.28,
+        r: 48,
+        hp: Math.round(200 * bossSc),
+        maxHp: Math.round(200 * bossSc),
+        dmg: Math.round(16 * bossSc),
+        speed: 95 + lv * 2,
+        gold: 90 + lv * 15,
+        attackCd: 0.9,
+        facing: 0,
         hitFlash: 0,
         anim: 0,
-        pose: "idle",
-        onGround: true,
         phase: 0,
       };
-      bossFight = true;
+      arenaKey = "boss";
     }
     enemies.push(e);
   }
 
-  function seedAmbient() {
-    ambient = [];
-    const n = zoneName === "cave" ? 18 : zoneName === "forest" ? 14 : 10;
-    for (let i = 0; i < n; i++) {
-      ambient.push({
-        x: Math.random() * levelW,
-        y: 40 + Math.random() * (groundY - 80),
-        vx: (Math.random() - 0.5) * (zoneName === "rooftops" ? 28 : 12),
-        vy: (Math.random() - 0.5) * 6,
-        size: 1 + Math.random() * 2.5,
-        life: 1,
-        kind: zoneName === "cave" ? "ember" : zoneName === "forest" ? "leaf" : "dust",
-      });
-    }
-  }
-
   function startLevel() {
-    zoneName = zoneForLevel(save.level);
     player = makePlayer();
-    player.invuln = save.level <= 2 ? 2.2 : 1.4;
+    player.invuln = save.level <= 2 ? 2 : 1.2;
     enemies = [];
-    particles = [];
-    pickups = [];
     projectiles = [];
+    pickups = [];
+    particles = [];
     floatTexts = [];
-    cameraX = 0;
-    levelW = isBossLevel(save.level) ? 1150 : 1200 + save.level * 35;
-    bossFight = false;
     spawnQueue = buildSpawnQueue(save.level);
-    spawnTimer = save.level <= 2 ? 1.4 : 1.0;
-    levelClearTimer = 0;
+    spawnTimer = 0.9;
+    clearTimer = 0;
     shake = 0;
     hitStop = 0;
-    bgFlash = 0;
-    bgBlend = 1;
-    if (isBossLevel(save.level)) {
-      activeBgKey = "bgBoss";
-      prevBgKey = "bgBoss";
-      bgCycleIndex = 0;
-    } else {
-      bgCycleIndex = (save.level - 1) % BG_CYCLE.length;
-      activeBgKey = BG_CYCLE[bgCycleIndex];
-      prevBgKey = activeBgKey;
-    }
-    seedAmbient();
+    arenaIdx = (save.level - 1) % (ARENA_CYCLE.length - 1);
+    arenaKey = isBossLevel(save.level) ? "boss" : ARENA_CYCLE[arenaIdx];
     state = "play";
     showScreen(null);
     updateHud();
@@ -436,15 +307,11 @@
 
   function updateHud() {
     if (!player) return;
-    const pct = Math.max(0, player.hp / player.maxHp);
-    $("hp-bar").style.transform = `scaleX(${pct})`;
+    $("hp-bar").style.transform = `scaleX(${Math.max(0, player.hp / player.maxHp)})`;
     $("hp-text").textContent = `${Math.ceil(player.hp)}`;
     $("gold-hud").textContent = `${save.gold}`;
-    $("level-label").textContent = isBossLevel(save.level)
-      ? `Boss ${save.level}`
-      : `Niv. ${save.level}`;
-    const alive = enemies.filter((e) => e.hp > 0).length;
-    $("wave-label").textContent = `${alive + spawnQueue.length}`;
+    $("level-label").textContent = isBossLevel(save.level) ? `Boss ${save.level}` : `Niv. ${save.level}`;
+    $("wave-label").textContent = `${enemies.filter((e) => e.hp > 0).length + spawnQueue.length}`;
     const ready = player.specialCd <= 0;
     $("special-ready").classList.toggle("ready", ready);
     $("special-ready").textContent = ready ? "Spécial" : `${player.specialCd.toFixed(1)}s`;
@@ -452,7 +319,6 @@
 
   function openShop() {
     state = "shop";
-    zoneName = zoneForLevel(save.level);
     showScreen("shop");
     $("shop-gold").textContent = String(save.gold);
     $("shop-next").textContent = String(save.level);
@@ -466,11 +332,9 @@
       btn.type = "button";
       btn.className = "shop-item";
       btn.disabled = maxed || save.gold < cost;
-      btn.innerHTML = `
-        <span class="name">${u.name} <small>Nv.${lv}/${u.max}</small></span>
+      btn.innerHTML = `<span class="name">${u.name} <small>Nv.${lv}/${u.max}</small></span>
         <span class="price">${maxed ? "MAX" : cost + " ◆"}</span>
-        <span class="desc">${u.desc}</span>
-      `;
+        <span class="desc">${u.desc}</span>`;
       btn.addEventListener("click", () => {
         if (maxed || save.gold < cost) return;
         save.gold -= cost;
@@ -484,12 +348,12 @@
 
   function levelWon() {
     state = "won";
-    const bonus = 25 + save.level * 6 + (isBossLevel(save.level) ? 70 : 0);
+    const bonus = 30 + save.level * 6 + (isBossLevel(save.level) ? 80 : 0);
     save.gold += bonus;
     save.level += 1;
     persist();
     $("over-title").textContent = "Victoire !";
-    $("over-msg").textContent = `Niveau terminé. Bonus +${bonus} ◆ — or total ${save.gold}`;
+    $("over-msg").textContent = `Vague terminée. Bonus +${bonus} ◆ — or ${save.gold}`;
     $("btn-shop-after").classList.remove("hidden");
     $("btn-retry").classList.add("hidden");
     showScreen("over");
@@ -499,7 +363,7 @@
     state = "dead";
     persist();
     $("over-title").textContent = "Défaite";
-    $("over-msg").textContent = `Tu tombes au niveau ${save.level}. Or conservé: ${save.gold} ◆`;
+    $("over-msg").textContent = `Tu tombes au niveau ${save.level}. Or: ${save.gold} ◆`;
     $("btn-shop-after").classList.remove("hidden");
     $("btn-retry").classList.remove("hidden");
     showScreen("over");
@@ -507,12 +371,14 @@
 
   function addParticles(x, y, color, n = 8) {
     for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 40 + Math.random() * 160;
       particles.push({
         x,
         y,
-        vx: (Math.random() - 0.5) * 260,
-        vy: -Math.random() * 220 - 40,
-        life: 0.35 + Math.random() * 0.45,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp,
+        life: 0.3 + Math.random() * 0.4,
         color,
         size: 2 + Math.random() * 3,
       });
@@ -520,15 +386,15 @@
   }
 
   function addFloat(x, y, text, color) {
-    floatTexts.push({ x, y, text, color, life: 0.75, vy: -48 });
+    floatTexts.push({ x, y, text, color, life: 0.75, vy: -50 });
   }
 
-  function nearestEnemy(fromX) {
+  function nearestEnemy(from) {
     let best = null;
     let bestD = Infinity;
     enemies.forEach((e) => {
       if (e.hp <= 0) return;
-      const d = Math.abs(e.x - fromX);
+      const d = Math.hypot(e.x - from.x, e.y - from.y);
       if (d < bestD) {
         bestD = d;
         best = e;
@@ -537,219 +403,171 @@
     return best;
   }
 
-  function hurtPlayer(amount, fromX) {
-    if (player.invuln > 0 || player.hp <= 0) return;
+  function hurtPlayer(amount) {
+    if (!player || player.invuln > 0 || player.hp <= 0) return;
     const dmg = Math.max(1, Math.round(amount * (1 - player.armor)));
     player.hp -= dmg;
-    player.invuln = save.level <= 3 ? 1.05 : 0.8;
-    player.hitFlash = 0.25;
-    player.pose = "hurt";
-    player.vx += fromX < player.x ? 160 : -160;
-    player.vy = -140;
+    player.invuln = save.level <= 3 ? 0.95 : 0.7;
+    player.hitFlash = 0.2;
     shake = 10;
-    addParticles(player.x, player.y - 30, "#c23b3b", 10);
-    addFloat(player.x, player.y - 60, `-${dmg}`, "#ff8a7a");
+    addParticles(player.x, player.y, "#e04848", 10);
+    addFloat(player.x, player.y - 40, `-${dmg}`, "#ff8a7a");
     if (player.hp <= 0) {
       player.hp = 0;
       levelLost();
     }
   }
 
-  function hurtEnemy(e, amount, knock) {
+  function hurtEnemy(e, amount) {
     e.hp -= amount;
-    e.hitFlash = 0.18;
-    e.pose = "hurt";
-    e.vx += knock;
-    hitStop = Math.max(hitStop, 0.04);
-    addParticles(e.x, e.y - e.h * 0.5, "#e8a84a", 7);
-    addFloat(e.x, e.y - e.h - 10, `-${amount}`, "#ffe2a8");
+    e.hitFlash = 0.15;
+    hitStop = Math.max(hitStop, 0.035);
+    addParticles(e.x, e.y, "#f0c14a", 6);
+    addFloat(e.x, e.y - 36, `-${amount}`, "#ffe2a8");
     if (e.hp <= 0) {
       e.hp = 0;
       save.gold += e.gold;
-      addFloat(e.x, e.y - e.h, `+${e.gold}`, "#e8a84a");
-      addParticles(e.x, e.y - e.h * 0.4, "#3ecf9a", 14);
-      if (Math.random() < 0.4) {
-        const kind = Math.random() < 0.45 ? "gold" : "heart";
+      addFloat(e.x, e.y - 20, `+${e.gold}`, "#f0c14a");
+      addParticles(e.x, e.y, "#3ecf9a", 14);
+      if (Math.random() < 0.45) {
+        const kind = Math.random() < 0.5 ? "gold" : "heart";
         pickups.push({
           x: e.x,
-          y: e.y - 20,
-          vy: -120,
+          y: e.y,
           kind,
-          value: kind === "heart" ? 22 + save.upgrades.hp * 2 : 10 + Math.floor(save.level / 2),
-          life: 8,
+          value: kind === "heart" ? 22 : 12 + Math.floor(save.level / 2),
+          life: 10,
+          bob: Math.random() * 10,
         });
       }
-      shake = Math.max(shake, e.type === "boss" ? 16 : 6);
-      cycleBackdropOnKill(e.type);
+      shake = Math.max(shake, e.type === "boss" ? 18 : 7);
+      cycleArena(e.type === "boss");
     }
   }
 
   function tryAttack() {
-    if (!player || player.attackCd > 0 || player.attacking > 0) return;
-    const foe = nearestEnemy(player.x);
-    if (foe && Math.abs(foe.x - player.x) < 220) {
-      player.facing = foe.x >= player.x ? 1 : -1;
-    }
-    player.attacking = 0.26;
+    if (!player || player.attackCd > 0) return;
+    const foe = nearestEnemy(player);
+    if (foe) player.facing = Math.atan2(foe.y - player.y, foe.x - player.x);
     player.attackCd = 0.28;
-    player.pose = "attack";
-    const range = 68;
-    const ax = player.x + player.facing * (player.w * 0.35 + range * 0.5);
+    player.attacking = 0.18;
+    const range = player.range;
     enemies.forEach((e) => {
       if (e.hp <= 0) return;
-      const dx = e.x - ax;
-      const dy = e.y - player.y;
-      if (Math.abs(dx) < range + e.w * 0.35 && Math.abs(dy) < 70) {
-        hurtEnemy(e, player.dmg, player.facing * 150);
+      const d = Math.hypot(e.x - player.x, e.y - player.y);
+      if (d < range + e.r) {
+        // cone-ish: prefer facing direction
+        const ang = Math.atan2(e.y - player.y, e.x - player.x);
+        let diff = Math.abs(ang - player.facing);
+        if (diff > Math.PI) diff = Math.PI * 2 - diff;
+        if (diff < 1.35 || d < player.r + e.r + 8) hurtEnemy(e, player.dmg);
       }
     });
-    addParticles(ax, player.y - 28, "#f0d9a8", 5);
+    const ax = player.x + Math.cos(player.facing) * 30;
+    const ay = player.y + Math.sin(player.facing) * 30;
+    addParticles(ax, ay, "#f0d9a8", 5);
   }
 
   function trySpecial() {
     if (!player || player.specialCd > 0) return;
-    const foe = nearestEnemy(player.x);
-    if (foe) player.facing = foe.x >= player.x ? 1 : -1;
-    player.specialCd = statsFromSave().specialCd;
-    player.pose = "attack";
-    for (let i = 0; i < 3; i++) {
+    const foe = nearestEnemy(player);
+    if (foe) player.facing = Math.atan2(foe.y - player.y, foe.x - player.x);
+    player.specialCd = player.specialCdMax;
+    for (let i = -1; i <= 1; i++) {
+      const ang = player.facing + i * 0.28;
       projectiles.push({
-        x: player.x + player.facing * 20,
-        y: player.y - 34 - i * 4,
-        vx: player.facing * (500 + i * 20),
-        vy: (i - 1) * 36,
-        life: 1.1,
+        x: player.x,
+        y: player.y,
+        vx: Math.cos(ang) * 420,
+        vy: Math.sin(ang) * 420,
+        life: 0.9,
         dmg: player.specialDmg,
         friendly: true,
-        spin: 0,
+        r: 8,
       });
     }
-    addParticles(player.x, player.y - 30, "#3ecf9a", 8);
+    addParticles(player.x, player.y, "#3ecf9a", 10);
   }
 
-  function aabb(a, b) {
-    return (
-      Math.abs(a.x - b.x) < (a.w + b.w) * 0.45 &&
-      Math.abs(a.y - a.h * 0.5 - (b.y - b.h * 0.5)) < (a.h + b.h) * 0.45
-    );
+  function clampToArena(ent) {
+    const m = ent.r + 18;
+    ent.x = Math.max(m, Math.min(ARENA - m, ent.x));
+    ent.y = Math.max(m, Math.min(ARENA - m, ent.y));
   }
 
   function updatePlayer(dt) {
     const p = player;
-    const moving = Math.abs(p.vx) > 25;
-    p.anim += dt * (p.onGround && moving ? 11 : 4);
+    p.anim += dt * 8;
     if (p.attackCd > 0) p.attackCd -= dt;
     if (p.attacking > 0) p.attacking -= dt;
     if (p.specialCd > 0) p.specialCd -= dt;
     if (p.invuln > 0) p.invuln -= dt;
     if (p.hitFlash > 0) p.hitFlash -= dt;
 
-    let move = 0;
-    if (input.left) move -= 1;
-    if (input.right) move += 1;
-    p.vx += (move * p.speed - p.vx) * Math.min(1, dt * 12);
-    if (move !== 0) {
-      p.facing = move > 0 ? 1 : -1;
-    } else {
-      const foe = nearestEnemy(p.x);
-      if (foe && Math.abs(foe.x - p.x) < 320) {
-        p.facing = foe.x >= p.x ? 1 : -1;
-      }
+    let mx = move.x;
+    let my = move.y;
+    if (input.keys.left) mx -= 1;
+    if (input.keys.right) mx += 1;
+    if (input.keys.up) my -= 1;
+    if (input.keys.down) my += 1;
+    const len = Math.hypot(mx, my);
+    if (len > 1) {
+      mx /= len;
+      my /= len;
     }
-
-    if (p.hitFlash > 0.05) p.pose = "hurt";
-    else if (p.attacking > 0) p.pose = "attack";
-    else if (!p.onGround) p.pose = "jump";
-    else if (moving) p.pose = "run";
-    else p.pose = "idle";
-
-    if (input.jumpPressed && p.onGround) {
-      p.vy = -p.jump;
-      p.onGround = false;
-      addParticles(p.x, p.y, "rgba(200,220,220,0.45)", 5);
+    p.vx += (mx * p.speed - p.vx) * Math.min(1, dt * 14);
+    p.vy += (my * p.speed - p.vy) * Math.min(1, dt * 14);
+    if (len > 0.15) p.facing = Math.atan2(my, mx);
+    else {
+      const foe = nearestEnemy(p);
+      if (foe) p.facing = Math.atan2(foe.y - p.y, foe.x - p.x);
     }
-    input.jumpPressed = false;
 
     if (input.attackPressed) tryAttack();
     input.attackPressed = false;
     if (input.specialPressed) trySpecial();
     input.specialPressed = false;
 
-    p.vy += 1400 * dt;
     p.x += p.vx * dt;
     p.y += p.vy * dt;
-
-    if (p.y >= groundY) {
-      p.y = groundY;
-      p.vy = 0;
-      p.onGround = true;
-    } else {
-      p.onGround = false;
-    }
-    p.x = Math.max(40, Math.min(levelW - 40, p.x));
+    clampToArena(p);
   }
 
   function updateEnemies(dt) {
     enemies.forEach((e) => {
       if (e.hp <= 0) return;
-      e.anim += dt * (Math.abs(e.vx) > 20 ? 8 : 4);
+      e.anim += dt * 6;
       if (e.hitFlash > 0) e.hitFlash -= dt;
       if (e.attackCd > 0) e.attackCd -= dt;
-
-      if (e.hitFlash > 0.05) e.pose = "hurt";
-      else if (e.attackWind > 0) e.pose = "attack";
-      else if (Math.abs(e.vx) > 20) e.pose = "run";
-      else e.pose = "idle";
-
-      if (e.attackWind > 0) {
-        e.attackWind -= dt;
-        if (e.attackWind <= 0) {
-          const reach = e.type === "boss" ? 74 : e.type === "monster" ? 50 : 42;
-          if (Math.abs(e.x - player.x) < reach && Math.abs(e.y - player.y) < 55) {
-            hurtPlayer(e.dmg, e.x);
-          }
-          e.attackCd = e.type === "assassin" ? 0.95 : e.type === "monster" ? 1.35 : 1.15;
-        }
-        return;
-      }
-
       const dx = player.x - e.x;
-      e.facing = dx >= 0 ? 1 : -1;
-      const dist = Math.abs(dx);
-      const stopDist = e.type === "boss" ? 58 : e.type === "monster" ? 44 : 36;
-
-      if (dist > stopDist) {
-        const spd = e.speed * (e.type === "assassin" && dist < 220 ? 1.3 : 1);
-        e.vx += (e.facing * spd - e.vx) * Math.min(1, dt * 8);
-      } else {
-        e.vx *= 0.85;
-        if (e.attackCd <= 0) {
-          e.attackWind = e.type === "assassin" ? 0.22 : e.type === "monster" ? 0.4 : 0.32;
-        }
+      const dy = player.y - e.y;
+      const dist = Math.hypot(dx, dy) || 1;
+      e.facing = Math.atan2(dy, dx);
+      const stop = e.type === "boss" ? 55 : e.type === "monster" ? 42 : 36;
+      if (dist > stop) {
+        e.x += (dx / dist) * e.speed * dt;
+        e.y += (dy / dist) * e.speed * dt;
+      } else if (e.attackCd <= 0) {
+        hurtPlayer(e.dmg);
+        e.attackCd = e.type === "assassin" ? 0.85 : e.type === "monster" ? 1.2 : 1.0;
+        // knockback light
+        player.vx -= (dx / dist) * 120;
+        player.vy -= (dy / dist) * 120;
       }
-
-      if (e.type === "boss" && e.hp < e.maxHp * 0.45 && Math.random() < dt * 0.55) {
+      if (e.type === "boss" && e.hp < e.maxHp * 0.45 && Math.random() < dt * 0.9) {
+        const a = e.facing + (Math.random() - 0.5) * 0.4;
         projectiles.push({
           x: e.x,
-          y: e.y - 50,
-          vx: e.facing * 300,
-          vy: -30,
-          life: 1.4,
-          dmg: Math.round(e.dmg * 0.65),
+          y: e.y,
+          vx: Math.cos(a) * 280,
+          vy: Math.sin(a) * 280,
+          life: 1.3,
+          dmg: Math.round(e.dmg * 0.7),
           friendly: false,
-          spin: 0,
+          r: 10,
         });
       }
-
-      e.x += e.vx * dt;
-      e.x = Math.max(60, Math.min(levelW - 60, e.x));
-
-      if (aabb(e, { x: player.x, y: player.y, w: player.w * 0.7, h: player.h * 0.7 }) && e.attackWind <= 0) {
-        if (e.type !== "assassin" && e.attackCd <= 0.2) {
-          hurtPlayer(Math.round(e.dmg * 0.35), e.x);
-          e.attackCd = 0.7;
-        }
-      }
+      clampToArena(e);
     });
     enemies = enemies.filter((e) => e.hp > 0 || e.hitFlash > 0);
   }
@@ -759,18 +577,17 @@
       p.life -= dt;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
-      p.spin = (p.spin || 0) + dt * 14;
       if (p.friendly) {
         enemies.forEach((e) => {
           if (e.hp <= 0) return;
-          if (Math.abs(e.x - p.x) < e.w * 0.45 && Math.abs(e.y - e.h * 0.55 - p.y) < e.h * 0.45) {
-            hurtEnemy(e, p.dmg, Math.sign(p.vx) * 80);
+          if (Math.hypot(e.x - p.x, e.y - p.y) < e.r + p.r) {
+            hurtEnemy(e, p.dmg);
             p.life = 0;
           }
         });
       } else if (player && player.hp > 0) {
-        if (Math.abs(player.x - p.x) < 22 && Math.abs(player.y - 30 - p.y) < 28) {
-          hurtPlayer(p.dmg, p.x);
+        if (Math.hypot(player.x - p.x, player.y - p.y) < player.r + p.r) {
+          hurtPlayer(p.dmg);
           p.life = 0;
         }
       }
@@ -781,22 +598,17 @@
   function updatePickups(dt) {
     pickups.forEach((p) => {
       p.life -= dt;
-      p.vy += 600 * dt;
-      p.y += p.vy * dt;
-      if (p.y >= groundY - 10) {
-        p.y = groundY - 10;
-        p.vy = 0;
-      }
-      if (player && Math.abs(p.x - player.x) < 30 && Math.abs(p.y - (player.y - 20)) < 38) {
+      p.bob += dt * 6;
+      if (player && Math.hypot(p.x - player.x, p.y - player.y) < 40) {
         if (p.kind === "gold") {
           save.gold += p.value;
-          addFloat(p.x, p.y, `+${p.value}`, "#e8a84a");
+          addFloat(p.x, p.y, `+${p.value}`, "#f0c14a");
         } else {
           player.hp = Math.min(player.maxHp, player.hp + p.value);
           addFloat(p.x, p.y, `+${p.value}`, "#3ecf9a");
         }
         p.life = 0;
-        addParticles(p.x, p.y, p.kind === "gold" ? "#e8a84a" : "#3ecf9a", 6);
+        addParticles(p.x, p.y, p.kind === "gold" ? "#f0c14a" : "#3ecf9a", 6);
       }
     });
     pickups = pickups.filter((p) => p.life > 0);
@@ -807,7 +619,8 @@
       p.life -= dt;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
-      p.vy += 500 * dt;
+      p.vx *= 0.96;
+      p.vy *= 0.96;
     });
     particles = particles.filter((p) => p.life > 0);
     floatTexts.forEach((f) => {
@@ -815,20 +628,7 @@
       f.y += f.vy * dt;
     });
     floatTexts = floatTexts.filter((f) => f.life > 0);
-    ambient.forEach((a) => {
-      a.x += a.vx * dt;
-      a.y += a.vy * dt + Math.sin(time * 2 + a.x * 0.01) * 4 * dt;
-      if (a.x < cameraX - 40) a.x = cameraX + window.innerWidth + 20;
-      if (a.x > cameraX + window.innerWidth + 40) a.x = cameraX - 20;
-      if (a.y < 20) a.y = groundY - 40;
-      if (a.y > groundY - 20) a.y = 60;
-    });
     if (shake > 0) shake = Math.max(0, shake - dt * 40);
-    if (bgBlend < 1) {
-      const speed = activeBgKey === "bgBoss" || bgFlash > 0 ? 2.4 : 3.2;
-      bgBlend = Math.min(1, bgBlend + dt * speed);
-    }
-    if (bgFlash > 0) bgFlash = Math.max(0, bgFlash - dt * 1.6);
   }
 
   function update(dt) {
@@ -839,7 +639,6 @@
       return;
     }
     time += dt;
-
     if (spawnQueue.length) {
       spawnTimer -= dt;
       if (spawnTimer <= 0) {
@@ -848,238 +647,159 @@
         spawnTimer = next.delay || 0.5;
       }
     }
-
     updatePlayer(dt);
     updateEnemies(dt);
     updateProjectiles(dt);
     updatePickups(dt);
     updateFx(dt);
 
-    const targetCam = player.x - window.innerWidth * 0.35;
-    cameraX += (targetCam - cameraX) * Math.min(1, dt * 4);
-    cameraX = Math.max(0, Math.min(Math.max(0, levelW - window.innerWidth), cameraX));
-
-    const alive = enemies.some((e) => e.hp > 0);
-    if (!alive && spawnQueue.length === 0) {
-      levelClearTimer += dt;
-      if (levelClearTimer > 0.85) levelWon();
+    if (!enemies.some((e) => e.hp > 0) && spawnQueue.length === 0) {
+      clearTimer += dt;
+      if (clearTimer > 0.85) levelWon();
     }
-
     updateHud();
   }
 
-  // ——— Image backgrounds + sprites ———
-  function drawParallaxLayer(image, w, h, scrollFactor, yScale, alpha) {
-    if (!image) return;
-    const imgH = h * yScale;
-    const imgW = (image.width / image.height) * imgH;
-    const offset = -((cameraX * scrollFactor) % imgW);
-    ctx.globalAlpha = alpha;
-    for (let x = offset - imgW; x < w + imgW; x += imgW - 1) {
-      ctx.drawImage(image, x, h - imgH, imgW, imgH);
-    }
-    ctx.globalAlpha = 1;
+  function worldToScreen(x, y) {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const scale = view.scale;
+    const cx = w / 2;
+    const cy = h / 2 + 10;
+    // camera follows player lightly
+    const camX = player ? player.x : ARENA / 2;
+    const camY = player ? player.y : ARENA / 2;
+    return {
+      x: cx + (x - camX) * scale,
+      y: cy + (y - camY) * scale,
+      scale,
+    };
   }
 
-  function drawBgImage(key, w, h, alpha) {
-    const bg = img[key] || img.bgForest || img.bgDojo;
-    if (!bg || alpha <= 0.01) return;
-    // far soft twin
-    ctx.globalAlpha = alpha * 0.4;
-    const farH = h * 0.95;
-    const farW = (bg.width / bg.height) * farH * 1.12;
-    const ox = -((cameraX * 0.12) % farW);
-    for (let x = ox - farW; x < w + farW; x += farW - 1) {
-      ctx.drawImage(bg, x, h * 0.05, farW, farH);
-    }
-    ctx.globalAlpha = alpha;
-    drawParallaxLayer(bg, w, h, 0.35, 1.0, alpha);
-    ctx.globalAlpha = 1;
-  }
-
-  function drawBackground(w, h) {
-    ctx.fillStyle = "#070d12";
+  function drawArena() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const a = arenaImg();
+    const s = worldToScreen(ARENA / 2, ARENA / 2);
+    const size = ARENA * s.scale;
+    ctx.fillStyle = "#0c140e";
     ctx.fillRect(0, 0, w, h);
-
-    // Crossfade between previous and active painted backdrop on kills
-    if (bgBlend < 1 && prevBgKey !== activeBgKey) {
-      drawBgImage(prevBgKey, w, h, 1 - bgBlend);
-      drawBgImage(activeBgKey, w, h, bgBlend);
+    if (a) {
+      ctx.drawImage(a, s.x - size / 2, s.y - size / 2, size, size);
     } else {
-      drawBgImage(activeBgKey, w, h, 1);
+      ctx.fillStyle = "#2a4030";
+      ctx.fillRect(s.x - size / 2, s.y - size / 2, size, size);
     }
-
-    // ground strip for feet
-    const groundGrad = ctx.createLinearGradient(0, groundY - 8, 0, h);
-    groundGrad.addColorStop(0, "rgba(0,0,0,0)");
-    groundGrad.addColorStop(0.08, "rgba(8,12,14,0.55)");
-    groundGrad.addColorStop(1, "rgba(4,6,8,0.92)");
-    ctx.fillStyle = groundGrad;
-    ctx.fillRect(0, groundY - 8, w, h - groundY + 8);
-
-    if (activeBgKey === "bgBoss" || bgFlash > 0) {
-      const rim = ctx.createRadialGradient(w * 0.5, groundY - 30, 10, w * 0.5, groundY, w * 0.6);
-      rim.addColorStop(0, `rgba(232,120,40,${0.2 + bgFlash * 0.35})`);
-      rim.addColorStop(1, "transparent");
-      ctx.fillStyle = rim;
-      ctx.fillRect(0, groundY - 180, w, 180);
-    }
-
-    if (bgFlash > 0) {
-      ctx.fillStyle = `rgba(255, 200, 120, ${bgFlash * 0.45})`;
-      ctx.fillRect(0, 0, w, h);
-    }
-
-    ambient.forEach((a) => {
-      const sx = a.x - cameraX;
-      if (sx < -20 || sx > w + 20) return;
-      ctx.globalAlpha = 0.4;
-      ctx.fillStyle = a.kind === "ember" ? "#e8783a" : a.kind === "leaf" ? "#8cba6a" : "#c8d8d0";
-      if (a.kind === "leaf") ctx.fillRect(sx, a.y, a.size + 1, a.size * 0.6);
-      else {
-        ctx.beginPath();
-        ctx.arc(sx, a.y, a.size, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    });
-    ctx.globalAlpha = 1;
+    // soft vignette on arena edge
+    ctx.strokeStyle = "rgba(240,193,74,0.25)";
+    ctx.lineWidth = 4;
+    ctx.strokeRect(s.x - size / 2, s.y - size / 2, size, size);
   }
 
-  function spriteFor(ent, isPlayer) {
-    if (isPlayer) {
-      if (ent.pose === "hurt" || ent.hitFlash > 0.08) return img.ninjaHurt || img.ninjaIdle;
-      if (ent.pose === "attack" || ent.attacking > 0) return img.ninjaAttack || img.ninjaIdle;
-      if (ent.pose === "run" || ent.pose === "jump") return img.ninjaRun || img.ninjaIdle;
-      return img.ninjaIdle;
-    }
-    if (ent.type === "assassin") return img.assassin;
-    if (ent.type === "monster") return img.monster;
-    if (ent.type === "boss") return img.boss;
-    return img.assassin;
-  }
-
-  function drawCharacter(ent, isPlayer) {
-    const { x, y, h, facing, anim, hitFlash, attacking } = ent;
-    const sx = x - cameraX;
-    const bob = ent.pose === "idle" ? Math.sin(anim) * 1.5 : ent.pose === "run" ? Math.abs(Math.sin(anim)) * 2 : 0;
-    const sprite = spriteFor(ent, isPlayer);
-
+  function drawEntity(ent, sprite, isPlayer) {
+    const s = worldToScreen(ent.x, ent.y);
+    const size = ent.r * 2.4 * s.scale;
     ctx.save();
-    ctx.translate(sx, y + bob);
-    ctx.scale(facing, 1);
-
-    if (hitFlash > 0) ctx.globalAlpha = 0.55 + Math.sin(time * 50) * 0.3;
+    ctx.translate(s.x, s.y);
+    if (ent.hitFlash > 0) ctx.globalAlpha = 0.55 + Math.sin(time * 40) * 0.3;
     if (isPlayer && ent.invuln > 0 && Math.floor(time * 18) % 2 === 0) ctx.globalAlpha = 0.4;
 
-    // contact shadow
-    ctx.fillStyle = "rgba(0,0,0,0.45)";
+    // shadow
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
     ctx.beginPath();
-    ctx.ellipse(0, -2, Math.max(18, ent.w * 0.45), 7, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, size * 0.28, size * 0.38, size * 0.14, 0, 0, Math.PI * 2);
     ctx.fill();
 
+    ctx.rotate(ent.facing + Math.PI / 2);
     if (sprite) {
-      const drawH = h;
-      const drawW = (sprite.width / sprite.height) * drawH;
-      ctx.drawImage(sprite, -drawW * 0.5, -drawH, drawW, drawH);
+      ctx.drawImage(sprite, -size / 2, -size / 2, size, size);
     } else {
-      ctx.fillStyle = "#1a2428";
-      ctx.fillRect(-ent.w * 0.35, -h, ent.w * 0.7, h);
+      ctx.fillStyle = isPlayer ? "#1a2830" : "#3a2020";
+      ctx.beginPath();
+      ctx.arc(0, 0, size * 0.4, 0, Math.PI * 2);
+      ctx.fill();
     }
 
-    // attack slash accent
-    if (attacking > 0 || (!isPlayer && ent.attackWind > 0 && ent.attackWind < 0.14)) {
-      ctx.strokeStyle = isPlayer ? "rgba(232,168,74,0.85)" : "rgba(255,120,80,0.7)";
+    // attack ring
+    if (isPlayer && ent.attacking > 0) {
+      ctx.rotate(-(ent.facing + Math.PI / 2));
+      ctx.strokeStyle = "rgba(240,193,74,0.75)";
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.arc(ent.w * 0.15, -h * 0.45, 36, -1.0, 0.9);
+      ctx.arc(0, 0, ent.range * s.scale * 0.55, ent.facing - 1.1, ent.facing + 1.1);
       ctx.stroke();
     }
+    ctx.restore();
 
     if (!isPlayer && ent.hp < ent.maxHp) {
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = "rgba(0,0,0,0.55)";
-      ctx.fillRect(-26, -h - 16, 52, 6);
-      ctx.fillStyle = ent.type === "boss" ? "#e8a84a" : "#c23b3b";
-      ctx.fillRect(-26, -h - 16, 52 * Math.max(0, ent.hp / ent.maxHp), 6);
+      const bar = worldToScreen(ent.x, ent.y - ent.r - 10);
+      ctx.fillStyle = "rgba(0,0,0,0.5)";
+      ctx.fillRect(bar.x - 22, bar.y, 44, 5);
+      ctx.fillStyle = ent.type === "boss" ? "#f0c14a" : "#e04848";
+      ctx.fillRect(bar.x - 22, bar.y, 44 * Math.max(0, ent.hp / ent.maxHp), 5);
     }
-
-    ctx.restore();
   }
 
   function draw() {
     const w = window.innerWidth;
     const h = window.innerHeight;
-    if (state === "menu" || state === "shop") {
-      zoneName = zoneForLevel(Math.max(1, save.level));
-      bossFight = false;
-    }
     ctx.save();
     if (shake > 0) {
       ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
     }
-    drawBackground(w, h);
+
+    if (state === "menu" || state === "shop") {
+      arenaKey = ARENA_CYCLE[(Math.max(1, save.level) - 1) % (ARENA_CYCLE.length - 1)];
+    }
+
+    drawArena();
 
     pickups.forEach((p) => {
-      const sx = p.x - cameraX;
-      ctx.fillStyle = p.kind === "gold" ? "#e8a84a" : "#3ecf9a";
+      const s = worldToScreen(p.x, p.y + Math.sin(p.bob) * 3);
+      ctx.fillStyle = p.kind === "gold" ? "#f0c14a" : "#3ecf9a";
       ctx.beginPath();
-      ctx.arc(sx, p.y, 9, 0, Math.PI * 2);
+      ctx.arc(s.x, s.y, 9 * s.scale, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = "#071018";
-      ctx.font = "bold 11px sans-serif";
-      ctx.fillText(p.kind === "gold" ? "◆" : "+", sx - 4, p.y + 4);
     });
 
     enemies.forEach((e) => {
-      if (e.hp > 0 || e.hitFlash > 0) drawCharacter(e, false);
+      if (e.hp > 0 || e.hitFlash > 0) {
+        const spr = e.type === "boss" ? img.boss : e.type === "monster" ? img.monster : img.assassin;
+        drawEntity(e, spr, false);
+      }
     });
-    if (player) drawCharacter(player, true);
+    if (player) drawEntity(player, img.ninja, true);
 
     projectiles.forEach((p) => {
-      const sx = p.x - cameraX;
-      ctx.save();
-      ctx.translate(sx, p.y);
-      ctx.rotate(p.spin || 0);
-      if (p.friendly) {
-        ctx.fillStyle = "#3ecf9a";
-        ctx.beginPath();
-        ctx.moveTo(8, 0);
-        ctx.lineTo(-6, 5);
-        ctx.lineTo(-6, -5);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = "rgba(255,255,255,0.4)";
-        ctx.stroke();
-      } else {
-        ctx.fillStyle = "#ff6a4a";
-        ctx.beginPath();
-        ctx.arc(0, 0, 7, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
+      const s = worldToScreen(p.x, p.y);
+      ctx.fillStyle = p.friendly ? "#3ecf9a" : "#ff6a4a";
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, (p.r || 6) * s.scale, 0, Math.PI * 2);
+      ctx.fill();
     });
 
     particles.forEach((p) => {
+      const s = worldToScreen(p.x, p.y);
       ctx.globalAlpha = Math.max(0, p.life * 2);
       ctx.fillStyle = p.color;
-      ctx.fillRect(p.x - cameraX, p.y, p.size, p.size);
+      ctx.fillRect(s.x, s.y, p.size, p.size);
     });
     ctx.globalAlpha = 1;
 
     floatTexts.forEach((f) => {
+      const s = worldToScreen(f.x, f.y);
       ctx.globalAlpha = Math.max(0, f.life);
       ctx.fillStyle = f.color;
       ctx.font = "700 16px Teko, sans-serif";
-      ctx.fillText(f.text, f.x - cameraX, f.y);
+      ctx.fillText(f.text, s.x, s.y);
     });
     ctx.globalAlpha = 1;
 
-    const vig = ctx.createRadialGradient(w * 0.5, h * 0.45, h * 0.2, w * 0.5, h * 0.5, h * 0.78);
+    const vig = ctx.createRadialGradient(w * 0.5, h * 0.5, h * 0.2, w * 0.5, h * 0.5, h * 0.75);
     vig.addColorStop(0, "transparent");
-    vig.addColorStop(1, "rgba(0,0,0,0.42)");
+    vig.addColorStop(1, "rgba(0,0,0,0.4)");
     ctx.fillStyle = vig;
     ctx.fillRect(0, 0, w, h);
-
     ctx.restore();
   }
 
@@ -1091,64 +811,114 @@
     requestAnimationFrame(loop);
   }
 
-  function bindControls() {
-    document.querySelectorAll(".ctrl").forEach((btn) => {
-      const act = btn.dataset.act;
-      const set = (v) => {
-        if (act === "left") input.left = v;
-        if (act === "right") input.right = v;
-        if (act === "jump") {
-          if (v && !input.jump) input.jumpPressed = true;
-          input.jump = v;
-        }
-        if (act === "attack") {
-          if (v && !input.attack) input.attackPressed = true;
-          input.attack = v;
-        }
-        if (act === "special") {
-          if (v && !input.special) input.specialPressed = true;
-          input.special = v;
-        }
-        btn.classList.toggle("active", v);
-      };
+  function bindStick() {
+    const stick = $("stick");
+    const knob = $("stick-knob");
+    let active = false;
+    let pid = null;
+    const max = 42;
+
+    function setFromEvent(e) {
+      const rect = stick.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      let dx = e.clientX - cx;
+      let dy = e.clientY - cy;
+      const len = Math.hypot(dx, dy) || 1;
+      const cl = Math.min(len, max);
+      dx = (dx / len) * cl;
+      dy = (dy / len) * cl;
+      knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+      move.x = dx / max;
+      move.y = dy / max;
+    }
+
+    function end() {
+      active = false;
+      pid = null;
+      move.x = 0;
+      move.y = 0;
+      knob.style.transform = "translate(-50%, -50%)";
+    }
+
+    stick.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      active = true;
+      pid = e.pointerId;
+      stick.setPointerCapture(pid);
+      setFromEvent(e);
+    });
+    stick.addEventListener("pointermove", (e) => {
+      if (!active || e.pointerId !== pid) return;
+      setFromEvent(e);
+    });
+    stick.addEventListener("pointerup", end);
+    stick.addEventListener("pointercancel", end);
+    stick.addEventListener("lostpointercapture", end);
+  }
+
+  function bindActs() {
+    const atk = $("btn-attack");
+    const sp = $("btn-special");
+    const bind = (btn, press, release) => {
       btn.addEventListener("pointerdown", (e) => {
         e.preventDefault();
         btn.setPointerCapture(e.pointerId);
-        set(true);
+        btn.classList.add("active");
+        press();
       });
-      btn.addEventListener("pointerup", () => set(false));
-      btn.addEventListener("pointercancel", () => set(false));
-      btn.addEventListener("lostpointercapture", () => set(false));
-    });
-
-    window.addEventListener("keydown", (e) => {
-      if (e.repeat) return;
-      if (e.code === "ArrowLeft" || e.code === "KeyQ") input.left = true;
-      if (e.code === "ArrowRight" || e.code === "KeyD") input.right = true;
-      if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyZ") {
-        input.jump = true;
-        input.jumpPressed = true;
-        e.preventDefault();
-      }
-      if (e.code === "KeyJ" || e.code === "KeyA" || e.code === "KeyK") {
+      const up = () => {
+        btn.classList.remove("active");
+        release();
+      };
+      btn.addEventListener("pointerup", up);
+      btn.addEventListener("pointercancel", up);
+      btn.addEventListener("lostpointercapture", up);
+    };
+    bind(
+      atk,
+      () => {
         input.attackPressed = true;
         input.attack = true;
+      },
+      () => {
+        input.attack = false;
       }
-      if (e.code === "KeyL" || e.code === "KeyE" || e.code === "ShiftLeft") {
+    );
+    bind(
+      sp,
+      () => {
         input.specialPressed = true;
         input.special = true;
+      },
+      () => {
+        input.special = false;
       }
+    );
+  }
+
+  function bindKeys() {
+    window.addEventListener("keydown", (e) => {
+      if (e.repeat) return;
+      if (e.code === "KeyQ" || e.code === "KeyA" || e.code === "ArrowLeft") input.keys.left = true;
+      if (e.code === "KeyD" || e.code === "ArrowRight") input.keys.right = true;
+      if (e.code === "KeyZ" || e.code === "KeyW" || e.code === "ArrowUp") input.keys.up = true;
+      if (e.code === "KeyS" || e.code === "ArrowDown") input.keys.down = true;
+      if (e.code === "KeyJ" || e.code === "Space") {
+        input.attackPressed = true;
+        e.preventDefault();
+      }
+      if (e.code === "KeyL" || e.code === "KeyE") input.specialPressed = true;
       if (e.code === "Escape" && state === "play") {
         state = "pause";
         showScreen("pause");
       }
     });
     window.addEventListener("keyup", (e) => {
-      if (e.code === "ArrowLeft" || e.code === "KeyQ") input.left = false;
-      if (e.code === "ArrowRight" || e.code === "KeyD") input.right = false;
-      if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyZ") input.jump = false;
-      if (e.code === "KeyJ" || e.code === "KeyA" || e.code === "KeyK") input.attack = false;
-      if (e.code === "KeyL" || e.code === "KeyE" || e.code === "ShiftLeft") input.special = false;
+      if (e.code === "KeyQ" || e.code === "KeyA" || e.code === "ArrowLeft") input.keys.left = false;
+      if (e.code === "KeyD" || e.code === "ArrowRight") input.keys.right = false;
+      if (e.code === "KeyZ" || e.code === "KeyW" || e.code === "ArrowUp") input.keys.up = false;
+      if (e.code === "KeyS" || e.code === "ArrowDown") input.keys.down = false;
     });
   }
 
@@ -1189,34 +959,30 @@
     });
   }
 
+  window.OmbreDuDojo = {
+    cycleOnKill: (type) => cycleArena(type === "boss"),
+    getArena: () => arenaKey,
+    startLevel,
+  };
+
   resize();
   window.addEventListener("resize", resize);
-  bindControls();
+  bindStick();
+  bindActs();
+  bindKeys();
   bindUi();
   updateContinueBtn();
   showScreen("menu");
-  zoneName = "dojo";
   player = makePlayer();
-  player.x = 220;
-  seedAmbient();
 
-  // Tiny debug surface for demos / QA (kill → décor cycle)
-  window.OmbreDuDojo = {
-    cycleOnKill: (type) => cycleBackdropOnKill(type || "assassin"),
-    getBg: () => activeBgKey,
-  };
-
-  loadAllAssets().then(() => {
-    requestAnimationFrame(loop);
-  });
-  // draw loading frame until assets ready
+  loadAllAssets().then(() => requestAnimationFrame(loop));
   (function waitBoot() {
     if (assetsReady) return;
     const w = window.innerWidth;
     const h = window.innerHeight;
-    ctx.fillStyle = "#070d12";
+    ctx.fillStyle = "#121a14";
     ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = "#e8a84a";
+    ctx.fillStyle = "#f0c14a";
     ctx.font = "700 28px Teko, sans-serif";
     ctx.textAlign = "center";
     ctx.fillText("Chargement…", w / 2, h / 2);

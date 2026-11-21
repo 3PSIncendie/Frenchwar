@@ -1,7 +1,7 @@
 {
   "name": "Ombre du Dojo",
   "short_name": "Ombre",
-  "description": "Jeu ninja vue de côté — combats, boutique et boss.",
+  "description": "Arène ninja vue du dessus — vagues, boutique et boss.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#070d12",
