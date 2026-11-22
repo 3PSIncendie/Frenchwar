@@ -801,10 +801,27 @@
     ent.x = Math.max(40, Math.min(LEVEL_W - 40, ent.x));
   }
 
+  function gaitSpeed(ent) {
+    return Math.min(16, 6 + Math.abs(ent.vx) * 0.045);
+  }
+
+  function maybeFootstep(ent, isPlayer) {
+    if (!ent.onGround || Math.abs(ent.vx) < 40) return;
+    const phase = ent.anim;
+    const plant = Math.sin(phase);
+    const prev = ent._prevPlant || 0;
+    if (prev <= 0 && plant > 0.75) {
+      const dir = ent.facing || 1;
+      addParticles(ent.x - dir * 8, ent.y - 2, "rgba(200,190,160,0.7)", 3);
+      if (isPlayer) shake = Math.max(shake, 1.2);
+    }
+    ent._prevPlant = plant;
+  }
+
   function updatePlayer(dt) {
     const p = player;
     const moving = Math.abs(p.vx) > 30;
-    p.anim += dt * (p.onGround && moving ? 11 : 4);
+    p.anim += dt * (p.onGround && moving ? gaitSpeed(p) : 3.2);
     if (p.attackCd > 0) p.attackCd -= dt;
     if (p.kickCd > 0) p.kickCd -= dt;
     if (p.attacking > 0) p.attacking -= dt;
@@ -858,12 +875,13 @@
       p.flip = 0;
       if (p.spin > 0.05) p.spin = 0.05;
     }
+    maybeFootstep(p, true);
   }
 
   function updateEnemies(dt) {
     enemies.forEach((e) => {
       if (e.hp <= 0) return;
-      e.anim += dt * (e.pose === "run" ? 9 : 5);
+      e.anim += dt * (e.pose === "run" || Math.abs(e.vx) > 30 ? gaitSpeed(e) : 4);
       if (e.hitFlash > 0) e.hitFlash -= dt;
       if (e.attackCd > 0) e.attackCd -= dt;
       if (e.defending > 0) e.defending -= dt;
@@ -937,6 +955,7 @@
         }
       }
       applyPhysics(e, dt, false);
+      maybeFootstep(e, false);
     });
     enemies = enemies.filter((e) => e.hp > 0 || e.hitFlash > 0);
   }
@@ -1059,15 +1078,117 @@
     });
   }
 
+  function drawWalkLegs(ent, drawH, walking) {
+    if (!walking) return;
+    const phase = ent.anim;
+    const a = Math.sin(phase);
+    const b = Math.sin(phase + Math.PI);
+    const hipY = -drawH * 0.38;
+    const legLen = drawH * 0.42;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "rgba(20,16,12,0.55)";
+    ctx.lineWidth = Math.max(5, drawH * 0.055);
+    // back leg
+    ctx.beginPath();
+    ctx.moveTo(-4, hipY);
+    ctx.quadraticCurveTo(-4 + a * 10, hipY + legLen * 0.45, a * 22, -4 + Math.max(0, -b) * 6);
+    ctx.stroke();
+    // front leg
+    ctx.beginPath();
+    ctx.moveTo(4, hipY);
+    ctx.quadraticCurveTo(4 + b * 10, hipY + legLen * 0.45, b * 26, -4 + Math.max(0, -a) * 6);
+    ctx.stroke();
+    // feet
+    ctx.fillStyle = "rgba(30,24,18,0.75)";
+    ctx.beginPath();
+    ctx.ellipse(a * 22, -2 + Math.max(0, -b) * 6, 9, 3.5, a * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(b * 26, -2 + Math.max(0, -a) * 6, 9, 3.5, b * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawWalkArms(ent, drawH, walking) {
+    if (!walking) return;
+    const phase = ent.anim;
+    const a = Math.sin(phase);
+    const shoulder = -drawH * 0.62;
+    ctx.strokeStyle = "rgba(25,20,16,0.4)";
+    ctx.lineWidth = Math.max(3.5, drawH * 0.035);
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-6, shoulder);
+    ctx.quadraticCurveTo(-10 - a * 8, shoulder + drawH * 0.18, -4 - a * 18, shoulder + drawH * 0.28);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(6, shoulder);
+    ctx.quadraticCurveTo(10 + a * 8, shoulder + drawH * 0.18, 4 + a * 18, shoulder + drawH * 0.28);
+    ctx.stroke();
+  }
+
+  function drawSplitWalkSprite(spr, drawW, drawH, phase, walking) {
+    if (!spr) return;
+    if (!walking) {
+      ctx.drawImage(spr, -drawW * 0.5, -drawH, drawW, drawH);
+      return;
+    }
+    const stride = Math.sin(phase);
+    const bob = Math.abs(Math.sin(phase)) * 3;
+    const lean = stride * 0.06;
+    const split = 0.58; // torso / legs split
+    const torsoH = drawH * split;
+    const legsH = drawH * (1 - split);
+    const srcTorsoH = spr.height * split;
+    const srcLegsH = spr.height * (1 - split);
+
+    // torso (upper) — slight counter-rotate + bob
+    ctx.save();
+    ctx.translate(0, -drawH + torsoH * 0.5 - bob);
+    ctx.rotate(-lean * 0.7);
+    ctx.drawImage(
+      spr,
+      0,
+      0,
+      spr.width,
+      srcTorsoH,
+      -drawW * 0.5,
+      -torsoH * 0.5,
+      drawW,
+      torsoH
+    );
+    ctx.restore();
+
+    // legs (lower) — opposite lean + stride shear
+    ctx.save();
+    ctx.translate(stride * 3, -legsH * 0.15 - bob * 0.3);
+    ctx.transform(1, 0, stride * 0.12, 1, 0, 0);
+    ctx.drawImage(
+      spr,
+      0,
+      srcTorsoH,
+      spr.width,
+      srcLegsH,
+      -drawW * 0.5,
+      -legsH,
+      drawW,
+      legsH + 2
+    );
+    ctx.restore();
+  }
+
   function drawActor(ent, spriteKey, isPlayer) {
     const spr = img[spriteKey] || img.hero;
     const sx = ent.x - cameraX;
-    const bob =
-      ent.pose === "idle" || ent.pose === "guard"
-        ? Math.sin(ent.anim) * 1.5
-        : ent.pose === "run"
-          ? Math.abs(Math.sin(ent.anim)) * 3
-          : 0;
+    const walking = ent.onGround && Math.abs(ent.vx) > 28 && (ent.pose === "run" || (!isPlayer && ent.pose !== "attack" && ent.pose !== "defend"));
+    const idle = ent.pose === "idle" || ent.pose === "guard";
+    const phase = ent.anim;
+    const stride = Math.sin(phase);
+    const bob = walking
+      ? Math.abs(Math.sin(phase)) * 5
+      : idle
+        ? Math.sin(phase) * 1.5
+        : 0;
+
     ctx.save();
     ctx.translate(sx, ent.y + bob);
 
@@ -1083,6 +1204,7 @@
     } else if (!ent.onGround) {
       rot = Math.sin(ent.anim * 2) * 0.25;
     }
+    if (walking) rot += stride * 0.05;
     ctx.rotate(rot);
     // Hero art faces right; enemy art faces left — flip so they look at each other (de face).
     const look = isPlayer ? ent.facing : -ent.facing;
@@ -1091,9 +1213,9 @@
     // lean / squash for motion
     let sxScale = 1;
     let syScale = 1;
-    if (ent.pose === "run") {
-      sxScale = 1 + Math.sin(ent.anim * 2) * 0.04;
-      syScale = 1 - Math.sin(ent.anim * 2) * 0.04;
+    if (walking) {
+      sxScale = 1 + Math.sin(phase * 2) * 0.05;
+      syScale = 1 - Math.abs(Math.sin(phase)) * 0.06;
     } else if (ent.pose === "defend" || ent.pose === "guard") {
       sxScale = 0.92;
       syScale = 1.04;
@@ -1109,18 +1231,25 @@
     if (ent.hitFlash > 0) ctx.globalAlpha = 0.55 + Math.sin(time * 45) * 0.3;
     if (isPlayer && ent.invuln > 0 && Math.floor(time * 18) % 2 === 0) ctx.globalAlpha = 0.4;
 
+    // contact shadow stretches with stride
     ctx.fillStyle = "rgba(0,0,0,0.4)";
     ctx.beginPath();
-    ctx.ellipse(0, -2, ent.w * 0.4, 6, 0, 0, Math.PI * 2);
+    ctx.ellipse(walking ? stride * 4 : 0, -2, ent.w * (walking ? 0.48 : 0.4), walking ? 5 : 6, 0, 0, Math.PI * 2);
     ctx.fill();
 
     const drawH = ent.h;
+    const drawW = spr ? (spr.width / spr.height) * drawH : ent.w * 0.7;
     if (spr) {
-      const drawW = (spr.width / spr.height) * drawH;
-      ctx.drawImage(spr, -drawW * 0.5, -drawH, drawW, drawH);
+      drawSplitWalkSprite(spr, drawW, drawH, phase, walking);
     } else {
       ctx.fillStyle = isPlayer ? "#3a4650" : "#6a3a28";
       ctx.fillRect(-ent.w * 0.3, -ent.h, ent.w * 0.6, ent.h);
+    }
+
+    // overlay limbs so the walk reads clearly on painted sprites
+    if (walking) {
+      drawWalkLegs(ent, drawH, true);
+      drawWalkArms(ent, drawH, true);
     }
 
     // realistic katana arc
@@ -1135,7 +1264,6 @@
       const a1 = a0 + 2.2 * Math.min(1, t + 0.35);
       ctx.arc(ent.w * 0.05, -ent.h * 0.48, isPlayer ? 38 : 32, a0, a1);
       ctx.stroke();
-      // blade tip flash
       ctx.fillStyle = "rgba(255,240,200,0.85)";
       const tipX = Math.cos(a1) * 38;
       const tipY = -ent.h * 0.48 + Math.sin(a1) * 38;
