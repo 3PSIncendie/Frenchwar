@@ -8,6 +8,6 @@
     "androidScheme": "https"
   },
   "android": {
-    "allowMixedContent": true
+    "allowMixedContent": false
   }
 }
