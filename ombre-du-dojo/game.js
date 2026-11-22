@@ -120,21 +120,63 @@
     { id: "crimson", name: "Pourpre", desc: "Tenue cramoisie + scarf", cost: 120, sprite: "crimson", owned: false },
     { id: "snow", name: "Neige", desc: "Camouflage blanc", cost: 160, sprite: "snow", owned: false },
   ];
+  const WEAPON_MAX_LEVEL = 5;
   const WEAPONS = [
-    { id: "katana", name: "Katana", desc: "Lame équilibrée (mêlée)", cost: 0, dmg: 0, range: 0, owned: true },
+    {
+      id: "katana",
+      name: "Katana",
+      desc: "Lame équilibrée (mêlée) — améliorable",
+      cost: 0,
+      dmg: 0,
+      range: 0,
+      owned: true,
+      levelDmg: 4,
+      levelRange: 5,
+      upgradeBase: 40,
+      upgradeStep: 30,
+    },
     {
       id: "shuriken",
       name: "Shuriken",
-      desc: "Lancer distant — □ / J envoie 1–3 étoiles",
+      desc: "Lancer distant — □ / J · niveaux = plus d’étoiles",
       cost: 0,
       dmg: 2,
       range: 40,
       owned: true,
       ranged: true,
       speed: 0.75,
+      levelDmg: 3,
+      levelRange: 8,
+      upgradeBase: 45,
+      upgradeStep: 32,
     },
-    { id: "nodachi", name: "Nodachi", desc: "+6 dégâts, +12 portée mêlée", cost: 140, dmg: 6, range: 12, owned: false },
-    { id: "sai", name: "Sais jumeaux", desc: "+4 dégâts, attaque plus rapide", cost: 110, dmg: 4, range: -4, owned: false, speed: 0.85 },
+    {
+      id: "nodachi",
+      name: "Nodachi",
+      desc: "+6 dégâts, +12 portée mêlée — améliorable",
+      cost: 140,
+      dmg: 6,
+      range: 12,
+      owned: false,
+      levelDmg: 5,
+      levelRange: 6,
+      upgradeBase: 55,
+      upgradeStep: 40,
+    },
+    {
+      id: "sai",
+      name: "Sais jumeaux",
+      desc: "+4 dégâts, plus rapide — améliorable",
+      cost: 110,
+      dmg: 4,
+      range: -4,
+      owned: false,
+      speed: 0.85,
+      levelDmg: 3,
+      levelRange: 3,
+      upgradeBase: 50,
+      upgradeStep: 35,
+    },
   ];
   const UPGRADES = [
     { id: "hp", name: "Vitalité", desc: "+25 PV max", base: 35, step: 20, max: 8 },
@@ -166,6 +208,8 @@
   const img = {};
   let assetsReady = false;
 
+  const defaultWeaponLevels = () => ({ katana: 1, shuriken: 1, nodachi: 1, sai: 1 });
+
   const defaultSave = () => ({
     gold: 0,
     level: 1,
@@ -173,6 +217,7 @@
     weapon: "katana",
     ownedOutfits: ["shadow"],
     ownedWeapons: ["katana", "shuriken"],
+    weaponLevels: defaultWeaponLevels(),
     upgrades: { hp: 0, dmg: 0, spd: 0, jump: 0, kick: 0, armor: 0 },
   });
 
@@ -230,6 +275,7 @@
         ...defaultSave(),
         ...p,
         upgrades: { ...defaultSave().upgrades, ...(p.upgrades || {}) },
+        weaponLevels: { ...defaultWeaponLevels(), ...(p.weaponLevels || {}) },
         ownedOutfits: p.ownedOutfits || ["shadow"],
         ownedWeapons: Array.from(new Set([...(p.ownedWeapons || ["katana"]), "shuriken"])),
       };
@@ -264,10 +310,12 @@
   }
 
   function hasProgress() {
+    const wLv = save.weaponLevels || {};
     return (
       save.level > 1 ||
       save.gold > 0 ||
       Object.values(save.upgrades).some((v) => v > 0) ||
+      Object.values(wLv).some((v) => v > 1) ||
       (save.ownedOutfits && save.ownedOutfits.length > 1) ||
       (save.ownedWeapons && save.ownedWeapons.length > 1)
     );
@@ -350,21 +398,52 @@
     return WEAPONS.find((w) => w.id === save.weapon) || WEAPONS[0];
   }
 
+  function weaponLevel(id) {
+    if (!save.weaponLevels) save.weaponLevels = defaultWeaponLevels();
+    const lv = save.weaponLevels[id] || 1;
+    return Math.max(1, Math.min(WEAPON_MAX_LEVEL, lv));
+  }
+
+  function weaponUpgradeCost(id) {
+    const w = WEAPONS.find((x) => x.id === id);
+    if (!w) return 9999;
+    const lv = weaponLevel(id);
+    if (lv >= WEAPON_MAX_LEVEL) return 0;
+    return (w.upgradeBase || 40) + (w.upgradeStep || 30) * (lv - 1);
+  }
+
+  function weaponBonus(w) {
+    const lv = weaponLevel(w.id);
+    const steps = lv - 1;
+    return {
+      level: lv,
+      dmg: (w.dmg || 0) + steps * (w.levelDmg || 3),
+      range: (w.range || 0) + steps * (w.levelRange || 4),
+      speed: (w.speed || 1) * Math.max(0.55, 1 - steps * 0.04),
+      stars: w.ranged ? Math.min(5, 2 + Math.floor(steps / 1) + (steps >= 4 ? 1 : 0)) : 0,
+    };
+  }
+
+  function applyWeaponStatsToPlayer() {
+    if (!player) return;
+    const s = statsFromSave();
+    player.dmg = s.dmg;
+    player.range = s.range;
+    player.attackCdMax = s.attackCdMax;
+    player.kickDmg = s.kickDmg;
+  }
+
   function cycleWeapon() {
     const owned = WEAPONS.filter((w) => save.ownedWeapons.includes(w.id));
     if (owned.length < 2) return;
     const i = owned.findIndex((w) => w.id === save.weapon);
     const next = owned[(i + 1) % owned.length];
     save.weapon = next.id;
-    if (player) {
-      const s = statsFromSave();
-      player.dmg = s.dmg;
-      player.range = s.range;
-      player.attackCdMax = s.attackCdMax;
-    }
+    applyWeaponStatsToPlayer();
     persist();
     updateHud();
-    showToast(next.ranged ? "Shuriken équipés" : `${next.name} équipé`);
+    const b = weaponBonus(next);
+    showToast(`${next.name} Nv.${b.level}`);
   }
   function outfitSpriteKey() {
     const o = OUTFITS.find((x) => x.id === save.outfit) || OUTFITS[0];
@@ -374,17 +453,19 @@
   function statsFromSave() {
     const u = save.upgrades;
     const w = weaponStats();
+    const b = weaponBonus(w);
     const maxHp = 120 + u.hp * 25;
     return {
       maxHp,
       hp: maxHp,
-      dmg: 14 + u.dmg * 4 + (w.dmg || 0),
+      dmg: 14 + u.dmg * 4 + b.dmg,
       kickDmg: 10 + u.kick * 5,
       speed: 230 * (1 + u.spd * 0.08),
       jump: 460 + u.jump * 30,
-      range: 62 + (w.range || 0),
-      attackCdMax: 0.3 * (w.speed || 1),
+      range: 62 + b.range,
+      attackCdMax: 0.3 * b.speed,
       armor: Math.min(0.45, 0.05 + u.armor * 0.08),
+      weaponLevel: b.level,
     };
   }
 
@@ -583,7 +664,10 @@
     if (gold) gold.textContent = `${save.gold}`;
     if (level) level.textContent = isBossLevel(save.level) ? `Boss ${save.level}` : `Niv. ${save.level}`;
     if (wave) wave.textContent = `${enemies.filter((e) => e.hp > 0).length + spawnQueue.length}`;
-    if (weapon) weapon.textContent = weaponStats().name;
+    if (weapon) {
+      const w = weaponStats();
+      weapon.textContent = `${w.name} Nv.${weaponLevel(w.id)}`;
+    }
   }
 
   function upgradeCost(id) {
@@ -646,24 +730,59 @@
       WEAPONS.forEach((w) => {
         const owned = save.ownedWeapons.includes(w.id);
         const eq = save.weapon === w.id;
+        const lv = weaponLevel(w.id);
+        const b = weaponBonus(w);
+        const upCost = weaponUpgradeCost(w.id);
+        const maxed = lv >= WEAPON_MAX_LEVEL;
+        const wrap = document.createElement("div");
+        wrap.className = "weapon-shop-row";
+
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "shop-item" + (eq ? " equipped" : "");
         btn.disabled = !owned && save.gold < w.cost;
-        btn.innerHTML = `<span class="name">${w.name}${eq ? " ✓" : ""}</span>
+        const powerHint = owned
+          ? `Nv.${lv}/${WEAPON_MAX_LEVEL} · +${b.dmg} dmg · +${b.range} portée${w.ranged ? ` · ${b.stars} étoiles` : ""}`
+          : w.desc;
+        btn.innerHTML = `<span class="name">${w.name}${eq ? " ✓" : ""} <small>Nv.${owned ? lv : 1}</small></span>
           <span class="price">${owned ? (eq ? "ÉQUIPÉ" : "Équiper") : w.cost + " ◆"}</span>
-          <span class="desc">${w.desc}</span>`;
+          <span class="desc">${powerHint}</span>`;
         btn.onclick = () => {
           if (!owned) {
             if (save.gold < w.cost) return;
             save.gold -= w.cost;
             save.ownedWeapons.push(w.id);
+            if (!save.weaponLevels) save.weaponLevels = defaultWeaponLevels();
+            save.weaponLevels[w.id] = save.weaponLevels[w.id] || 1;
           }
           save.weapon = w.id;
           persist();
           renderShop();
+          updateHud();
         };
-        list.appendChild(btn);
+        wrap.appendChild(btn);
+
+        if (owned) {
+          const up = document.createElement("button");
+          up.type = "button";
+          up.className = "shop-item weapon-upgrade";
+          up.disabled = maxed || save.gold < upCost;
+          up.innerHTML = `<span class="name">Améliorer ${w.name}</span>
+            <span class="price">${maxed ? "MAX" : upCost + " ◆"}</span>
+            <span class="desc">${maxed ? "Puissance maximale" : `Nv.${lv} → ${lv + 1} (+${w.levelDmg || 3} dmg, +${w.levelRange || 4} portée)`}</span>`;
+          up.onclick = () => {
+            if (maxed || save.gold < upCost) return;
+            save.gold -= upCost;
+            if (!save.weaponLevels) save.weaponLevels = defaultWeaponLevels();
+            save.weaponLevels[w.id] = lv + 1;
+            if (eq) applyWeaponStatsToPlayer();
+            persist({ toast: `${w.name} Nv.${lv + 1}` });
+            renderShop();
+            updateHud();
+          };
+          wrap.appendChild(up);
+        }
+        list.appendChild(wrap);
       });
     }
   }
@@ -836,20 +955,22 @@
   function tryThrowShuriken() {
     if (!player || player.attackCd > 0 || player.kicking > 0 || player.defending > 0.05) return;
     const aerial = !player.onGround;
-    const count = aerial ? 3 : 2;
+    const b = weaponBonus(weaponStats());
+    const count = Math.min(5, b.stars + (aerial ? 1 : 0));
     player.attacking = 0.18;
     player.attackCd = player.attackCdMax;
     player.pose = "attack";
     player.slash = 0.4;
     const baseDmg = Math.max(8, Math.round(player.dmg * 0.85));
+    const speedBonus = 620 + b.level * 25;
     for (let i = 0; i < count; i++) {
-      const spread = (i - (count - 1) / 2) * 55;
+      const spread = (i - (count - 1) / 2) * (48 + b.level * 2);
       projectiles.push({
         x: player.x + player.facing * 28,
-        y: player.y - player.h * 0.55 + spread * 0.15,
-        vx: player.facing * (620 + Math.abs(player.vx) * 0.2),
-        vy: aerial ? -40 + i * 25 : spread * 0.15,
-        life: 1.35,
+        y: player.y - player.h * 0.55 + spread * 0.12,
+        vx: player.facing * (speedBonus + Math.abs(player.vx) * 0.2),
+        vy: aerial ? -40 + i * 22 : spread * 0.18,
+        life: 1.25 + b.level * 0.08,
         rot: Math.random() * Math.PI,
         spin: player.facing * (14 + Math.random() * 6),
         dmg: baseDmg,

@@ -179,8 +179,16 @@ h2 { font-size: clamp(2.2rem, 10vw, 3.2rem); }
 .shop-item:disabled { opacity: .45; cursor: not-allowed; }
 .shop-item.equipped { border-color: var(--jade); }
 .shop-item .name { font-family: Teko, Impact, sans-serif; font-size: 1.2rem; }
+.shop-item .name small { color: var(--muted); font-size: .85rem; margin-left: 4px; }
 .shop-item .desc { grid-column: 1 / -1; font-size: .75rem; color: var(--muted); }
 .shop-item .price { font-family: Teko, Impact, sans-serif; font-size: 1.15rem; color: var(--lantern); }
+.weapon-shop-row { display: flex; flex-direction: column; gap: 6px; }
+.weapon-upgrade {
+  border-style: dashed !important;
+  border-color: rgba(62,207,154,.35) !important;
+  background: rgba(14,36,28,.75) !important;
+}
+.weapon-upgrade .price { color: var(--jade); }
 
 @media (orientation: landscape) and (max-height: 500px) {
   h1 { font-size: 2.4rem; }
