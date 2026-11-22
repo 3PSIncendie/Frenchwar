@@ -1,0 +1,11 @@
+node_modules/
+www/
+# Native/Capacitor Android lives in ../ombre-du-dojo-android — never ship here
+android/
+ios/
+*.jks
+*.keystore
+keystore.properties
+download/*.apk
+*.log
+.DS_Store
