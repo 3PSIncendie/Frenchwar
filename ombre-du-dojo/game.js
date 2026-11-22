@@ -703,7 +703,7 @@
     if (shCount) shCount.textContent = String(ammo);
     if (shHud) {
       shHud.classList.toggle("empty", ammo <= 0);
-      shHud.innerHTML = `手裏 <span id="shuriken-count">${ammo}</span>/${SHURIKEN_MAX}`;
+      shHud.innerHTML = `Shuri <span id="shuriken-count">${ammo}</span>/${SHURIKEN_MAX}`;
     }
   }
 
