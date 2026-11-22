@@ -121,6 +121,7 @@
     { id: "snow", name: "Neige", desc: "Camouflage blanc", cost: 160, sprite: "snow", owned: false },
   ];
   const WEAPON_MAX_LEVEL = 5;
+  const SHURIKEN_MAX = 10;
   const WEAPONS = [
     {
       id: "katana",
@@ -219,6 +220,7 @@
     ownedOutfits: ["shadow"],
     ownedWeapons: ["katana", "shuriken"],
     weaponLevels: defaultWeaponLevels(),
+    shuriken: SHURIKEN_MAX,
     upgrades: { hp: 0, dmg: 0, spd: 0, jump: 0, kick: 0, armor: 0 },
   });
 
@@ -284,6 +286,7 @@
           new Set([...(p.ownedWeapons || ["katana", "shuriken"]), "shuriken"]).filter((id) => id)
         ),
         weapon: p.weapon === "shuriken" ? "katana" : p.weapon || "katana",
+        shuriken: Math.max(0, Math.min(SHURIKEN_MAX, p.shuriken != null ? p.shuriken : SHURIKEN_MAX)),
       };
     } catch {
       return defaultSave();
@@ -687,9 +690,15 @@
     if (wave) wave.textContent = `${enemies.filter((e) => e.hp > 0).length + spawnQueue.length}`;
     if (weapon) {
       const w = weaponStats();
-      const s = sidearmStats();
-      const sLv = s ? weaponLevel(s.id) : 1;
-      weapon.textContent = `${w.name} Nv.${weaponLevel(w.id)} · ★${sLv}`;
+      weapon.textContent = `${w.name} Nv.${weaponLevel(w.id)}`;
+    }
+    const shCount = $("shuriken-count");
+    const shHud = $("shuriken-hud");
+    const ammo = save.shuriken != null ? save.shuriken : SHURIKEN_MAX;
+    if (shCount) shCount.textContent = String(ammo);
+    if (shHud) {
+      shHud.classList.toggle("empty", ammo <= 0);
+      shHud.innerHTML = `★ <span id="shuriken-count">${ammo}</span>/${SHURIKEN_MAX}`;
     }
   }
 
@@ -817,6 +826,25 @@
           };
           wrap.appendChild(up);
         }
+        if (w.sidearm) {
+          const ammo = save.shuriken != null ? save.shuriken : SHURIKEN_MAX;
+          const need = SHURIKEN_MAX - ammo;
+          const packCost = Math.max(15, need * 4);
+          const refill = document.createElement("button");
+          refill.type = "button";
+          refill.className = "shop-item weapon-upgrade";
+          refill.disabled = need <= 0 || save.gold < packCost;
+          refill.innerHTML = `<span class="name">Recharger shuriken</span>
+            <span class="price">${need <= 0 ? "PLEIN" : packCost + " ◆"}</span>
+            <span class="desc">Munitions ${ammo}/${SHURIKEN_MAX}${need > 0 ? ` · +${need} ★` : ""}</span>`;
+          refill.onclick = () => {
+            if (need <= 0 || save.gold < packCost) return;
+            save.gold -= packCost;
+            refillShuriken(need, "Shuriken rechargés (10)");
+            renderShop();
+          };
+          wrap.appendChild(refill);
+        }
         list.appendChild(wrap);
       });
     }
@@ -833,6 +861,8 @@
     const bonus = 28 + save.level * 6 + (isBossLevel(save.level) ? 80 : 0);
     save.gold += bonus;
     save.level += 1;
+    if (save.shuriken == null) save.shuriken = SHURIKEN_MAX;
+    save.shuriken = Math.min(SHURIKEN_MAX, save.shuriken + 3);
     persist({ toast: `Niv. ${save.level} sauvegardé` });
     const next = $("over-title");
     const msg = $("over-msg");
@@ -987,11 +1017,22 @@
 
   function tryThrowShuriken() {
     if (!player || player.throwCd > 0 || player.defending > 0.05) return;
+    if (save.shuriken == null) save.shuriken = SHURIKEN_MAX;
+    if (save.shuriken <= 0) {
+      showToast("Plus de shuriken");
+      player.throwCd = 0.35;
+      return;
+    }
     const side = sidearmStats();
     if (!side) return;
     const aerial = !player.onGround;
     const b = weaponBonus(side);
-    const count = Math.min(5, b.stars + (aerial ? 1 : 0));
+    const want = Math.min(5, b.stars + (aerial ? 1 : 0));
+    const count = Math.min(want, save.shuriken, SHURIKEN_MAX);
+    if (count <= 0) return;
+    save.shuriken -= count;
+    persist();
+    updateHud();
     player.throwCd = 0.28 * b.speed;
     player.pose = "attack";
     player.slash = 0.35;
@@ -1012,6 +1053,16 @@
       });
     }
     addParticles(player.x + player.facing * 30, player.y - player.h * 0.55, "#d8dde8", 5);
+  }
+
+  function refillShuriken(amount, toast) {
+    if (save.shuriken == null) save.shuriken = SHURIKEN_MAX;
+    const before = save.shuriken;
+    save.shuriken = Math.min(SHURIKEN_MAX, save.shuriken + amount);
+    if (save.shuriken > before) {
+      persist(toast ? { toast } : {});
+      updateHud();
+    }
   }
 
   function updateProjectiles(dt) {

@@ -101,6 +101,12 @@ h2 { font-size: clamp(2.2rem, 10vw, 3.2rem); }
   font-family: Teko, Impact, sans-serif; font-size: .95rem; color: var(--jade);
   background: rgba(0,0,0,.35); border: 1px solid rgba(62,207,154,.35);
 }
+.shuriken-hud {
+  margin-top: 4px; padding: 3px 10px; border-radius: 999px;
+  font-family: Teko, Impact, sans-serif; font-size: .95rem; color: #d8dde8;
+  background: rgba(0,0,0,.35); border: 1px solid rgba(180,190,210,.35);
+}
+.shuriken-hud.empty { color: #c23b3b; border-color: rgba(194,59,59,.45); }
 .pause-btn {
   position: absolute; top: calc(10px + var(--safe-t)); left: 50%; transform: translateX(-50%);
   z-index: 15; width: 44px; height: 36px; margin-top: 48px; border-radius: 8px;
