@@ -1865,19 +1865,20 @@
       }
     }
 
-    // Kick: extended striking leg
+    // Kick: extended striking leg (filled segment)
     if (kickingNow) {
       const t = isPlayer ? 1 - Math.min(1, ent.kicking / 0.36) : 0.7;
-      ctx.strokeStyle = limbColor(isPlayer, 0.95);
-      ctx.lineWidth = Math.max(7, drawH * 0.07);
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(4, -drawH * 0.3);
-      ctx.quadraticCurveTo(18 + t * 10, -drawH * 0.12, 28 + t * 36, -drawH * (0.22 - t * 0.1));
-      ctx.stroke();
+      const c = cloth(isPlayer);
+      const hx = 4;
+      const hy = -drawH * 0.3;
+      const fx = 28 + t * 36;
+      const fy = -drawH * (0.22 - t * 0.1);
+      drawLimbSeg(hx, hy, fx, fy, 7, 5, c.fill, c.shade);
+      drawRearArm(ent, drawH, isPlayer, null);
+      drawFrontSwordArm(ent, drawH, null, isPlayer);
       ctx.fillStyle = "rgba(62,207,154,0.85)";
       ctx.beginPath();
-      ctx.arc(28 + t * 36, -drawH * (0.22 - t * 0.1), 6, 0, Math.PI * 2);
+      ctx.arc(fx, fy, 6, 0, Math.PI * 2);
       ctx.fill();
     }
 
