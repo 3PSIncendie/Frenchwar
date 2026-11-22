@@ -225,8 +225,49 @@
       return defaultSave();
     }
   }
-  function persist() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(save));
+  let toastTimer = 0;
+  function showToast(msg) {
+    const el = $("toast");
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.remove("hidden");
+    el.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      el.classList.remove("show");
+      setTimeout(() => el.classList.add("hidden"), 220);
+    }, 1600);
+  }
+
+  function persist(opts = {}) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(save));
+      if (opts.toast) showToast(opts.toast === true ? "Progression sauvegardée" : String(opts.toast));
+      updateSaveSummary();
+      return true;
+    } catch (err) {
+      showToast("Sauvegarde impossible");
+      return false;
+    }
+  }
+
+  function hasProgress() {
+    return (
+      save.level > 1 ||
+      save.gold > 0 ||
+      Object.values(save.upgrades).some((v) => v > 0) ||
+      (save.ownedOutfits && save.ownedOutfits.length > 1) ||
+      (save.ownedWeapons && save.ownedWeapons.length > 1)
+    );
+  }
+
+  function updateSaveSummary() {
+    const summary = $("save-summary");
+    const lv = $("save-level");
+    const gold = $("save-gold");
+    if (lv) lv.textContent = String(save.level);
+    if (gold) gold.textContent = String(save.gold);
+    if (summary) summary.classList.toggle("hidden", !hasProgress());
   }
 
   function loadImage(src) {
@@ -332,13 +373,23 @@
   }
 
   function updateContinueBtn() {
-    const has =
-      save.level > 1 ||
-      save.gold > 0 ||
-      Object.values(save.upgrades).some((v) => v > 0) ||
-      save.ownedOutfits.length > 1 ||
-      save.ownedWeapons.length > 1;
-    $("btn-continue").classList.toggle("hidden", !has);
+    const has = hasProgress();
+    const cont = $("btn-continue");
+    const play = $("btn-play");
+    const saveMenu = $("btn-save-menu");
+    if (cont) {
+      cont.classList.toggle("hidden", !has);
+      cont.classList.toggle("primary", has);
+      cont.classList.toggle("ghost", !has);
+      cont.textContent = has ? `Continuer (niv. ${save.level})` : "Continuer";
+    }
+    if (play) {
+      play.classList.toggle("primary", !has);
+      play.classList.toggle("ghost", has);
+      play.textContent = has ? "Nouvelle partie" : "Jouer";
+    }
+    if (saveMenu) saveMenu.classList.toggle("hidden", !has);
+    updateSaveSummary();
   }
 
   function resize() {
@@ -460,7 +511,7 @@
       if (state === "play" || state === "pause") {
         save.gold += 10 + save.level * 2;
         save.level += 1;
-        persist();
+        persist({ toast: `Niv. ${save.level} sauvegardé` });
       }
       startLevel();
     }
@@ -598,7 +649,7 @@
     const bonus = 28 + save.level * 6 + (isBossLevel(save.level) ? 80 : 0);
     save.gold += bonus;
     save.level += 1;
-    persist();
+    persist({ toast: `Niv. ${save.level} sauvegardé` });
     const next = $("over-title");
     const msg = $("over-msg");
     const shop = $("btn-shop-after");
@@ -701,6 +752,7 @@
     if (e.hp <= 0) {
       e.hp = 0;
       save.gold += e.gold;
+      persist();
       addFloat(e.x, e.y - e.h, `+${e.gold}`, "#e8a84a");
       addParticles(e.x, e.y - e.h * 0.4, "#3ecf9a", 14);
       if (Math.random() < 0.4) {
@@ -973,6 +1025,7 @@
       if (player && Math.abs(p.x - player.x) < 36 && Math.abs(p.y - (player.y - 30)) < 50) {
         if (p.kind === "gold") {
           save.gold += p.value;
+          persist();
           addFloat(p.x, p.y, `+${p.value}`, "#e8a84a");
         } else {
           player.hp = Math.min(player.maxHp, player.hp + p.value);
@@ -1429,27 +1482,52 @@
     });
   }
 
+  function manualSave() {
+    persist({ toast: "Progression sauvegardée" });
+  }
+
   function bindUi() {
     $("btn-play").onclick = () => {
+      if (hasProgress()) {
+        const ok = window.confirm("Effacer la sauvegarde et recommencer au niveau 1 ?");
+        if (!ok) return;
+      }
       save = defaultSave();
+      persist({ toast: "Nouvelle partie" });
+      updateContinueBtn();
+      startLevel();
+    };
+    $("btn-continue").onclick = () => {
+      save = load();
+      updateContinueBtn();
+      startLevel();
+    };
+    $("btn-next-level").onclick = () => {
       persist();
       startLevel();
     };
-    $("btn-continue").onclick = () => openShop();
-    $("btn-next-level").onclick = () => startLevel();
     const skip = $("btn-skip-level");
     if (skip) skip.onclick = () => skipToNextLevel();
     const nextAfter = $("btn-next-after");
-    if (nextAfter) nextAfter.onclick = () => startLevel();
+    if (nextAfter) nextAfter.onclick = () => {
+      persist();
+      startLevel();
+    };
     const pauseNext = $("btn-pause-next");
     if (pauseNext) pauseNext.onclick = () => skipToNextLevel();
+    ["btn-save-menu", "btn-save-shop", "btn-save-pause"].forEach((id) => {
+      const el = $(id);
+      if (el) el.onclick = () => manualSave();
+    });
     $("btn-menu-from-shop").onclick = () => {
+      persist({ toast: "Progression sauvegardée" });
       state = "menu";
       showScreen("menu");
       updateContinueBtn();
     };
     $("btn-pause").onclick = () => {
       if (state !== "play") return;
+      persist();
       state = "pause";
       showScreen("pause");
     };
@@ -1458,7 +1536,7 @@
       showScreen(null);
     };
     $("btn-quit").onclick = () => {
-      persist();
+      persist({ toast: "Progression sauvegardée" });
       state = "menu";
       showScreen("menu");
       updateContinueBtn();
@@ -1466,6 +1544,7 @@
     $("btn-retry").onclick = () => startLevel();
     $("btn-shop-after").onclick = () => openShop();
     $("btn-menu-over").onclick = () => {
+      persist();
       state = "menu";
       showScreen("menu");
       updateContinueBtn();
@@ -1475,6 +1554,11 @@
         shopTab = t.dataset.tab;
         renderShop();
       };
+    });
+    window.addEventListener("beforeunload", () => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(save));
+      } catch (_) {}
     });
   }
 

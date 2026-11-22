@@ -60,6 +60,21 @@ h2 { font-size: clamp(2.2rem, 10vw, 3.2rem); }
 .btn.primary { background: linear-gradient(180deg,#f0b85a,#d4532a); color: #1a0e06; box-shadow: 0 8px 28px rgba(212,83,42,.35); }
 .btn.ghost { background: transparent; border-color: rgba(232,232,220,.28); color: var(--paper); }
 .hint { margin-top: 24px; font-size: .75rem; color: #2a4a55; }
+.save-summary {
+  margin: 0 0 18px; padding: 8px 14px; border-radius: 6px;
+  font-family: Teko, Impact, sans-serif; font-size: 1.25rem; letter-spacing: .04em;
+  color: var(--lantern); background: rgba(0,0,0,.35); border: 1px solid rgba(232,168,74,.28);
+}
+.toast {
+  position: absolute; left: 50%; bottom: calc(190px + var(--safe-b)); transform: translateX(-50%);
+  z-index: 40; padding: 10px 18px; border-radius: 8px;
+  font-family: Teko, Impact, sans-serif; font-size: 1.2rem; letter-spacing: .05em;
+  color: #1a0e06; background: linear-gradient(180deg,#f0b85a,#d4532a);
+  box-shadow: 0 8px 24px rgba(0,0,0,.35); pointer-events: none;
+  opacity: 0; transition: opacity .2s ease;
+}
+.toast.show { opacity: 1; }
+.toast.hidden { display: none !important; }
 
 #hud {
   position: absolute; top: 0; left: 0; right: 0; z-index: 10;

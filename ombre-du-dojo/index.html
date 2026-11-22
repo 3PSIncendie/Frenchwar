@@ -61,11 +61,13 @@
       <p class="eyebrow">JEUX ÉMILE</p>
       <h1>Ombre du Dojo</h1>
       <p class="tagline">Shinobi vue de côté — flip, katana, coups de pied, défense et ennemis réactifs.</p>
+      <p id="save-summary" class="save-summary hidden">Progression: niv. <span id="save-level">1</span> · <span id="save-gold">0</span> ◆</p>
       <div class="menu-actions">
-        <button type="button" id="btn-play" class="btn primary">Jouer</button>
-        <button type="button" id="btn-continue" class="btn ghost hidden">Continuer</button>
+        <button type="button" id="btn-continue" class="btn primary hidden">Continuer</button>
+        <button type="button" id="btn-play" class="btn ghost">Nouvelle partie</button>
+        <button type="button" id="btn-save-menu" class="btn ghost hidden">Sauvegarder</button>
       </div>
-      <p class="hint">Croix ▲▼◀▶ · △ saut · □ katana · ○ pied · ✕ défense · Clavier : flèches · J · K · L · Espace</p>
+      <p class="hint">Croix ▲▼◀▶ · △ saut · □ katana · ○ pied · ✕ défense · Progression auto-sauvegardée</p>
     </section>
 
     <section id="screen-shop" class="screen hidden">
@@ -80,6 +82,7 @@
       <div id="shop-list" class="shop-list"></div>
       <div class="menu-actions">
         <button type="button" id="btn-next-level" class="btn primary">Niveau suivant</button>
+        <button type="button" id="btn-save-shop" class="btn ghost">Sauvegarder</button>
         <button type="button" id="btn-menu-from-shop" class="btn ghost">Menu</button>
       </div>
     </section>
@@ -88,10 +91,13 @@
       <h2>Pause</h2>
       <div class="menu-actions">
         <button type="button" id="btn-resume" class="btn primary">Reprendre</button>
-        <button type="button" id="btn-pause-next" class="btn primary">Niveau suivant</button>
-        <button type="button" id="btn-quit" class="btn ghost">Abandonner</button>
+        <button type="button" id="btn-save-pause" class="btn primary">Sauvegarder</button>
+        <button type="button" id="btn-pause-next" class="btn ghost">Niveau suivant</button>
+        <button type="button" id="btn-quit" class="btn ghost">Menu (sauve)</button>
       </div>
     </section>
+
+    <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
     <section id="screen-over" class="screen hidden">
       <h2 id="over-title">Défaite</h2>
