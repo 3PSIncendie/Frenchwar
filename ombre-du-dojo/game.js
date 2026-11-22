@@ -1557,195 +1557,204 @@
     });
   }
 
-  function limbColor(isPlayer, alpha) {
-    return isPlayer ? `rgba(28, 36, 44,${alpha})` : `rgba(72, 38, 28,${alpha})`;
+  function cloth(isPlayer) {
+    return isPlayer
+      ? { fill: "#1e2a36", shade: "#121920", boot: "#0e141a", skin: "#d9b08c" }
+      : { fill: "#5a3224", shade: "#2e1810", boot: "#1a0e0a", skin: "#c99570" };
   }
 
-  /** Articulated thigh+shin — fully opaque so they don't look half-erased. */
-  function drawWalkLegs(ent, drawH, walking, isPlayer) {
-    if (!walking) return;
-    const phase = ent.gait || ent.anim;
-    const amp = Math.max(0.55, Math.min(1.15, Math.abs(ent.vx) / Math.max(90, (ent.speed || 160) * 0.55)));
-    const hipY = -drawH * 0.28;
-    const thigh = drawH * 0.28;
-    const shin = drawH * 0.26;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.globalAlpha = 1;
-
-    function leg(side, swing) {
-      const hipX = side * 8;
-      const hipAngle = swing * 0.78 * amp;
-      const kneeBend = 0.32 + Math.max(0, -swing) * 0.6 * amp;
-      const kx = hipX + Math.sin(hipAngle) * thigh;
-      const ky = hipY + Math.cos(hipAngle) * thigh;
-      const footAngle = hipAngle + kneeBend;
-      const fx = kx + Math.sin(footAngle) * shin;
-      const fy = Math.min(-2, ky + Math.cos(footAngle) * shin);
-      // understroke for solid silhouette
-      ctx.strokeStyle = isPlayer ? "#121820" : "#2a1610";
-      ctx.lineWidth = Math.max(11, drawH * 0.1);
-      ctx.beginPath();
-      ctx.moveTo(hipX, hipY);
-      ctx.lineTo(kx, ky);
-      ctx.lineTo(fx, fy);
-      ctx.stroke();
-      ctx.strokeStyle = limbColor(isPlayer, 1);
-      ctx.lineWidth = Math.max(8, drawH * 0.078);
-      ctx.beginPath();
-      ctx.moveTo(hipX, hipY);
-      ctx.lineTo(kx, ky);
-      ctx.lineTo(fx, fy);
-      ctx.stroke();
-      ctx.fillStyle = limbColor(isPlayer, 1);
-      ctx.beginPath();
-      ctx.ellipse(fx + side * 5, fy + 1, 11, 4.5, swing * 0.2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = isPlayer ? "rgba(232,168,74,0.55)" : "rgba(200,120,80,0.45)";
-      ctx.beginPath();
-      ctx.arc(kx, ky, 3.5, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    const a = Math.sin(phase);
-    leg(-1, a);
-    leg(1, -a);
-  }
-
-  /** Rear (back) arm only — front right arm is reserved for the katana. */
-  function drawRearWalkArm(ent, drawH, walking, isPlayer) {
-    if (!walking) return;
-    const phase = ent.gait || ent.anim;
-    const a = Math.sin(phase);
-    const amp = Math.max(0.5, Math.min(1.1, Math.abs(ent.vx) / Math.max(90, (ent.speed || 160) * 0.55)));
-    const shoulder = -drawH * 0.56;
-    const armLen = drawH * 0.3;
-    const sx = -10;
-    const ang = -0.2 + (-a) * 0.9 * amp;
-    const ex = sx + Math.sin(ang) * armLen;
-    const ey = shoulder + Math.cos(ang) * armLen;
-    ctx.lineCap = "round";
-    ctx.globalAlpha = 1;
-    ctx.strokeStyle = isPlayer ? "#121820" : "#2a1610";
-    ctx.lineWidth = Math.max(8, drawH * 0.07);
+  /** Filled tapered limb segment (more natural than a fat stroke). */
+  function drawLimbSeg(x0, y0, x1, y1, w0, w1, fill, shade) {
+    const ang = Math.atan2(y1 - y0, x1 - x0);
+    const c = Math.cos(ang + Math.PI / 2);
+    const s = Math.sin(ang + Math.PI / 2);
     ctx.beginPath();
-    ctx.moveTo(sx, shoulder);
-    ctx.quadraticCurveTo(sx - 7, shoulder + armLen * 0.45, ex, ey);
-    ctx.stroke();
-    ctx.strokeStyle = limbColor(isPlayer, 1);
-    ctx.lineWidth = Math.max(6, drawH * 0.055);
-    ctx.beginPath();
-    ctx.moveTo(sx, shoulder);
-    ctx.quadraticCurveTo(sx - 7, shoulder + armLen * 0.45, ex, ey);
+    ctx.moveTo(x0 + c * w0, y0 + s * w0);
+    ctx.lineTo(x1 + c * w1, y1 + s * w1);
+    ctx.lineTo(x1 - c * w1, y1 - s * w1);
+    ctx.lineTo(x0 - c * w0, y0 - s * w0);
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.strokeStyle = shade;
+    ctx.lineWidth = 1.1;
     ctx.stroke();
   }
 
   /**
-   * Front-right sword arm + katana (drawn after facing scale, so +X = bras de devant).
-   * t∈[0..1] attack progress; if null, idle/walk rest pose with slight gait swing.
+   * Head+torso only: crop out painted arms & legs so articulated limbs
+   * replace them (no fixed katana arm under a moving overlay).
    */
-  function drawFrontKatanaArm(ent, drawH, t, isPlayer) {
-    const shoulderY = -drawH * 0.54;
-    const swordShoulderX = 11; // bras droit / de devant
-    const armLen = drawH * 0.32;
-    const phase = ent.gait || ent.anim;
-    const walkSwing = Math.sin(phase) * 0.35;
-    let swordAng;
-    let ease = 0;
-    if (t == null) {
-      // rest: blade angled back/up along the hip, arm swings a little while walking
-      swordAng = -0.55 + walkSwing * (ent.onGround && Math.abs(ent.vx) > 14 ? 1 : 0.25);
-    } else {
-      ease = t < 0.22 ? t / 0.22 : t < 0.72 ? 0.12 + ((t - 0.22) / 0.5) * 0.88 : 1;
-      // overhead wind-up → forward cut across the body
-      swordAng = -2.35 + ease * 3.35;
-    }
-    const handX = swordShoulderX + Math.cos(swordAng) * armLen;
-    const handY = shoulderY + Math.sin(swordAng) * armLen;
+  function drawBodyCore(spr, drawW, drawH, phase, moving) {
+    if (!spr) return;
+    const stride = moving ? Math.sin(phase) : 0;
+    const bob = moving ? Math.abs(Math.sin(phase)) * 4 : 0;
+    const lean = stride * 0.08;
+    // Vertical: keep to waist. Horizontal: narrow center strip = torso/head, no arms.
+    const split = 0.56;
+    const srcMid = spr.width * 0.5;
+    const srcHalf = spr.width * 0.2;
+    const srcX = srcMid - srcHalf;
+    const srcW = srcHalf * 2;
+    const srcH = spr.height * split;
+    const dstW = drawW * 0.55;
+    const dstH = drawH * split;
 
-    ctx.lineCap = "round";
+    ctx.save();
+    ctx.translate(stride * 1.5, -drawH + dstH * 0.5 - bob);
+    ctx.rotate(-lean);
+    ctx.drawImage(spr, srcX, 0, srcW, srcH, -dstW * 0.5, -dstH * 0.5, dstW, dstH);
+    ctx.restore();
+  }
+
+  /** Natural walk / idle / air legs. */
+  function drawActorLegs(ent, drawH, isPlayer) {
+    const c = cloth(isPlayer);
+    const phase = ent.gait || ent.anim;
+    const moving = ent.onGround && Math.abs(ent.vx) > 12;
+    const amp = moving
+      ? Math.max(0.45, Math.min(1, Math.abs(ent.vx) / Math.max(100, (ent.speed || 160) * 0.55)))
+      : 0.12;
+    const hipY = -drawH * 0.3;
+    const thighLen = drawH * 0.27;
+    const shinLen = drawH * 0.25;
+    const a = moving ? Math.sin(phase) : Math.sin(phase * 0.35) * 0.25;
     ctx.globalAlpha = 1;
 
-    // rear brace arm during attack
-    if (t != null) {
-      ctx.strokeStyle = limbColor(isPlayer, 1);
-      ctx.lineWidth = Math.max(6, drawH * 0.05);
+    function leg(side, swing) {
+      const hipX = side * 7;
+      let hipAng;
+      let knee;
+      if (!ent.onGround) {
+        hipAng = side * 0.35 + swing * 0.15;
+        knee = 1.05;
+      } else {
+        hipAng = swing * 0.7 * amp;
+        knee = 0.28 + Math.max(0, -swing) * 0.55 * amp + (moving ? 0 : 0.12);
+      }
+      const kx = hipX + Math.sin(hipAng) * thighLen;
+      const ky = hipY + Math.cos(hipAng) * thighLen;
+      const footAng = hipAng + knee;
+      const fx = kx + Math.sin(footAng) * shinLen;
+      const fy = Math.min(-3, ky + Math.cos(footAng) * shinLen);
+      const tw = Math.max(5.5, drawH * 0.055);
+      const sw = Math.max(4.5, drawH * 0.045);
+      drawLimbSeg(hipX, hipY, kx, ky, tw, tw * 0.85, c.fill, c.shade);
+      drawLimbSeg(kx, ky, fx, fy, sw, sw * 0.75, c.fill, c.shade);
+      // boot
+      ctx.fillStyle = c.boot;
       ctx.beginPath();
-      ctx.moveTo(-10, shoulderY);
-      ctx.quadraticCurveTo(-16, shoulderY + 16, -6, shoulderY + 34);
-      ctx.stroke();
+      ctx.ellipse(fx + side * 3, fy + 1.5, 9, 3.8, footAng * 0.15, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    leg(-1, a);
+    leg(1, -a);
+  }
+
+  /** Back arm (opposite swing to front sword arm). */
+  function drawRearArm(ent, drawH, isPlayer, attackT) {
+    const c = cloth(isPlayer);
+    const phase = ent.gait || ent.anim;
+    const moving = ent.onGround && Math.abs(ent.vx) > 12;
+    const shoulderY = -drawH * 0.55;
+    const sx = -9;
+    const armLen = drawH * 0.29;
+    let ang;
+    if (attackT != null) {
+      ang = 0.55 + Math.min(1, attackT) * 0.35;
+    } else if (!ent.onGround) {
+      ang = -0.4;
+    } else {
+      const swing = Math.sin(phase);
+      ang = -0.25 + (-swing) * (moving ? 0.75 : 0.12);
+    }
+    const ex = sx + Math.sin(ang) * armLen;
+    const ey = shoulderY + Math.cos(ang) * armLen;
+    const w = Math.max(4.5, drawH * 0.042);
+    drawLimbSeg(sx, shoulderY, ex, ey, w, w * 0.75, c.fill, c.shade);
+    ctx.fillStyle = c.skin;
+    ctx.beginPath();
+    ctx.arc(ex, ey, 4.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  /**
+   * Front arm = the character's real leading arm (+X after facing scale).
+   * This is the only katana arm — sprite arms are cropped away.
+   */
+  function drawFrontSwordArm(ent, drawH, attackT, isPlayer) {
+    const c = cloth(isPlayer);
+    const shoulderY = -drawH * 0.55;
+    const sx = 10;
+    const upper = drawH * 0.2;
+    const lower = drawH * 0.16;
+    const phase = ent.gait || ent.anim;
+    const moving = ent.onGround && Math.abs(ent.vx) > 12;
+    let shoulderAng;
+    let elbowBend;
+    let ease = 0;
+
+    if (attackT != null) {
+      ease = attackT < 0.2 ? attackT / 0.2 : attackT < 0.7 ? 0.1 + ((attackT - 0.2) / 0.5) * 0.9 : 1;
+      // wind-up raised → slash forward/down
+      shoulderAng = -2.4 + ease * 3.2;
+      elbowBend = 0.35 - ease * 0.15;
+    } else if (!ent.onGround) {
+      shoulderAng = -0.85;
+      elbowBend = 0.55;
+    } else {
+      const walk = Math.sin(phase);
+      // opposite to rear arm: front arm swings with the blade at rest
+      shoulderAng = -0.7 + walk * (moving ? 0.55 : 0.1);
+      elbowBend = 0.45 + Math.max(0, -walk) * 0.2;
     }
 
-    // front sword arm (solid)
-    ctx.strokeStyle = isPlayer ? "#121820" : "#2a1610";
-    ctx.lineWidth = Math.max(10, drawH * 0.09);
-    ctx.beginPath();
-    ctx.moveTo(swordShoulderX, shoulderY);
-    ctx.lineTo(handX, handY);
-    ctx.stroke();
-    ctx.strokeStyle = limbColor(isPlayer, 1);
-    ctx.lineWidth = Math.max(7, drawH * 0.065);
-    ctx.beginPath();
-    ctx.moveTo(swordShoulderX, shoulderY);
-    ctx.lineTo(handX, handY);
-    ctx.stroke();
+    const midX = sx + Math.cos(shoulderAng) * upper;
+    const midY = shoulderY + Math.sin(shoulderAng) * upper;
+    const handAng = shoulderAng + elbowBend;
+    const handX = midX + Math.cos(handAng) * lower;
+    const handY = midY + Math.sin(handAng) * lower;
+    const w = Math.max(5, drawH * 0.048);
 
-    ctx.fillStyle = isPlayer ? "#e8c896" : "#d2a078";
+    drawLimbSeg(sx, shoulderY, midX, midY, w, w * 0.9, c.fill, c.shade);
+    drawLimbSeg(midX, midY, handX, handY, w * 0.85, w * 0.7, c.fill, c.shade);
+    ctx.fillStyle = c.skin;
     ctx.beginPath();
-    ctx.arc(handX, handY, 5.5, 0, Math.PI * 2);
+    ctx.arc(handX, handY, 4.5, 0, Math.PI * 2);
     ctx.fill();
 
-    const bladeLen = isPlayer ? 50 : 40;
-    const tipX = handX + Math.cos(swordAng) * bladeLen;
-    const tipY = handY + Math.sin(swordAng) * bladeLen;
-    // tsuka / guard
-    ctx.strokeStyle = isPlayer ? "#8a5a28" : "#6a4030";
-    ctx.lineWidth = 5;
+    // Katana follows the hand — same angle as forearm
+    const bladeAng = handAng;
+    const bladeLen = isPlayer ? 48 : 38;
+    const tipX = handX + Math.cos(bladeAng) * bladeLen;
+    const tipY = handY + Math.sin(bladeAng) * bladeLen;
+    ctx.strokeStyle = isPlayer ? "#6e4520" : "#5a3428";
+    ctx.lineWidth = 4.5;
+    ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.moveTo(handX - Math.cos(swordAng) * 4, handY - Math.sin(swordAng) * 4);
-    ctx.lineTo(handX + Math.cos(swordAng) * 8, handY + Math.sin(swordAng) * 8);
+    ctx.moveTo(handX - Math.cos(bladeAng) * 3, handY - Math.sin(bladeAng) * 3);
+    ctx.lineTo(handX + Math.cos(bladeAng) * 7, handY + Math.sin(bladeAng) * 7);
     ctx.stroke();
-    ctx.strokeStyle = isPlayer ? "#f0dcaa" : "#ffaa8c";
-    ctx.lineWidth = isPlayer ? 3.8 : 3.2;
+    ctx.strokeStyle = isPlayer ? "#efe0b8" : "#f0b090";
+    ctx.lineWidth = isPlayer ? 3.4 : 2.9;
     ctx.beginPath();
     ctx.moveTo(handX, handY);
     ctx.lineTo(tipX, tipY);
     ctx.stroke();
-    ctx.strokeStyle = "rgba(255,255,255,0.7)";
-    ctx.lineWidth = 1.3;
+    ctx.strokeStyle = "rgba(255,255,255,0.65)";
+    ctx.lineWidth = 1.15;
     ctx.beginPath();
-    ctx.moveTo(handX + Math.cos(swordAng) * 8, handY + Math.sin(swordAng) * 8);
+    ctx.moveTo(handX + Math.cos(bladeAng) * 8, handY + Math.sin(bladeAng) * 8);
     ctx.lineTo(tipX, tipY);
     ctx.stroke();
 
-    if (t != null && ease > 0.18 && ease < 0.95) {
-      ctx.strokeStyle = isPlayer ? "rgba(232,168,74,0.65)" : "rgba(255,120,90,0.5)";
-      ctx.lineWidth = 2.4;
+    if (attackT != null && ease > 0.15 && ease < 0.92) {
+      ctx.strokeStyle = isPlayer ? "rgba(232,168,74,0.55)" : "rgba(255,120,90,0.4)";
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(swordShoulderX, shoulderY, armLen + bladeLen * 0.5, swordAng - 0.95, swordAng);
+      ctx.arc(sx, shoulderY, upper + lower + bladeLen * 0.45, bladeAng - 0.9, bladeAng);
       ctx.stroke();
     }
-  }
-
-  function drawSplitWalkSprite(spr, drawW, drawH, phase, walking) {
-    if (!spr) return;
-    if (!walking) {
-      ctx.drawImage(spr, -drawW * 0.5, -drawH, drawW, drawH);
-      return;
-    }
-    const stride = Math.sin(phase);
-    const bob = Math.abs(Math.sin(phase)) * 5;
-    const lean = stride * 0.1;
-    // Keep shoulders/arms from sprite; only replace from waist down so limbs don't look half-cut
-    const split = 0.62;
-    const torsoH = drawH * split;
-    const srcTorsoH = spr.height * split;
-
-    ctx.save();
-    ctx.translate(stride * 2, -drawH + torsoH * 0.5 - bob);
-    ctx.rotate(-lean);
-    ctx.drawImage(spr, 0, 0, spr.width, srcTorsoH, -drawW * 0.5, -torsoH * 0.5, drawW, torsoH);
-    ctx.restore();
   }
 
   function drawActor(ent, spriteKey, isPlayer) {
@@ -1826,36 +1835,34 @@
 
     const drawH = ent.h;
     const drawW = spr ? (spr.width / spr.height) * drawH : ent.w * 0.7;
-
-    ctx.globalAlpha = flashAlpha;
-    if (spr) {
-      drawSplitWalkSprite(spr, drawW, drawH, phase, walking);
-    } else {
-      ctx.fillStyle = isPlayer ? "#3a4650" : "#6a3a28";
-      ctx.fillRect(-ent.w * 0.3, -ent.h, ent.w * 0.6, ent.h);
-    }
-    // Limbs always full opacity so they never look half-erased under flash
-    ctx.globalAlpha = 1;
-
     const attackingNow =
       (isPlayer && ent.attacking > 0) || (!isPlayer && ent.pose === "attack" && (ent.swing || 0) > 0);
     const kickingNow = (isPlayer && ent.kicking > 0) || (!isPlayer && ent.pose === "kick");
-
-    if (ent.onGround && Math.abs(ent.vx) > 10 && !kickingNow) {
-      drawWalkLegs(ent, drawH, true, isPlayer);
-    }
-    if (walking && !attackingNow) {
-      drawRearWalkArm(ent, drawH, true, isPlayer);
-    }
-
-    // Front-right katana arm: always visible; swings hard on attack
-    if (attackingNow) {
-      const progress = isPlayer
+    const attackProg = attackingNow
+      ? isPlayer
         ? 1 - Math.min(1, ent.attacking / 0.32)
-        : Math.min(1, Math.max(0, 1 - (ent.swing || 0)));
-      drawFrontKatanaArm(ent, drawH, progress, isPlayer);
-    } else if (!kickingNow && ent.pose !== "hurt") {
-      drawFrontKatanaArm(ent, drawH, null, isPlayer);
+        : Math.min(1, Math.max(0, 1 - (ent.swing || 0)))
+      : null;
+
+    ctx.globalAlpha = flashAlpha;
+    // Body core only (no painted arms/katana/legs) — limbs are drawn below
+    if (spr) {
+      drawBodyCore(spr, drawW, drawH, phase, walking || Math.abs(ent.vx) > 10);
+    } else {
+      ctx.fillStyle = isPlayer ? "#3a4650" : "#6a3a28";
+      ctx.fillRect(-ent.w * 0.18, -ent.h * 0.95, ent.w * 0.36, ent.h * 0.55);
+    }
+    ctx.globalAlpha = 1;
+
+    if (!kickingNow) {
+      drawActorLegs(ent, drawH, isPlayer);
+    }
+    // Rear arm first, then front sword arm on top (the real leading arm)
+    if (!kickingNow) {
+      drawRearArm(ent, drawH, isPlayer, attackProg);
+      if (ent.pose !== "hurt") {
+        drawFrontSwordArm(ent, drawH, attackProg, isPlayer);
+      }
     }
 
     // Kick: extended striking leg
