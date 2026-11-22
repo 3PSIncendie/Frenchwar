@@ -139,6 +139,14 @@ h2 { font-size: clamp(2.2rem, 10vw, 3.2rem); }
 .dpad-btn.left { left: 0; top: 57px; }
 .dpad-btn.right { right: 0; top: 57px; }
 
+.ctrl-cluster.right { align-items: flex-end; gap: 8px; }
+.throw-btn {
+  width: 54px; height: 54px; border-radius: 50%; margin-bottom: 56px;
+  border: 2px solid rgba(200,210,230,.55) !important;
+  background: rgba(40,48,64,.85) !important;
+  color: #e8ecf4 !important; font-size: 1.35rem !important;
+}
+
 /* Boutons face PlayStation (losange) */
 .face-pad {
   position: relative; width: 168px; height: 168px;
@@ -189,6 +197,7 @@ h2 { font-size: clamp(2.2rem, 10vw, 3.2rem); }
   background: rgba(14,36,28,.75) !important;
 }
 .weapon-upgrade .price { color: var(--jade); }
+.sidearm-item { border-color: rgba(168,200,240,.35) !important; }
 
 @media (orientation: landscape) and (max-height: 500px) {
   h1 { font-size: 2.4rem; }
@@ -199,5 +208,6 @@ h2 { font-size: clamp(2.2rem, 10vw, 3.2rem); }
   .face { width: 44px; height: 44px; font-size: 1rem; }
   .face.jump, .face.defend { left: 44px; }
   .face.attack, .face.kick { top: 44px; }
+  .throw-btn { width: 44px; height: 44px; margin-bottom: 44px; font-size: 1.1rem !important; }
   .shop-list { max-height: 32vh; }
 }

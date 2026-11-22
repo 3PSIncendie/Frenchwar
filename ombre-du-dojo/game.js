@@ -138,13 +138,14 @@
     {
       id: "shuriken",
       name: "Shuriken",
-      desc: "Lancer distant — □ / J · niveaux = plus d’étoiles",
+      desc: "Arme secondaire — ★ / U · en plus de la mêlée",
       cost: 0,
       dmg: 2,
       range: 40,
       owned: true,
+      sidearm: true,
       ranged: true,
-      speed: 0.75,
+      speed: 0.7,
       levelDmg: 3,
       levelRange: 8,
       upgradeBase: 45,
@@ -255,6 +256,8 @@
     attackPressed: false,
     kick: false,
     kickPressed: false,
+    throw: false,
+    throwPressed: false,
     defend: false,
   };
 
@@ -277,7 +280,10 @@
         upgrades: { ...defaultSave().upgrades, ...(p.upgrades || {}) },
         weaponLevels: { ...defaultWeaponLevels(), ...(p.weaponLevels || {}) },
         ownedOutfits: p.ownedOutfits || ["shadow"],
-        ownedWeapons: Array.from(new Set([...(p.ownedWeapons || ["katana"]), "shuriken"])),
+        ownedWeapons: Array.from(
+          new Set([...(p.ownedWeapons || ["katana", "shuriken"]), "shuriken"]).filter((id) => id)
+        ),
+        weapon: p.weapon === "shuriken" ? "katana" : p.weapon || "katana",
       };
     } catch {
       return defaultSave();
@@ -394,8 +400,18 @@
     bgBlend = 0;
   }
 
+  function meleeWeapons() {
+    return WEAPONS.filter((w) => !w.sidearm);
+  }
+
+  function sidearmStats() {
+    return WEAPONS.find((w) => w.id === "shuriken") || WEAPONS.find((w) => w.sidearm);
+  }
+
   function weaponStats() {
-    return WEAPONS.find((w) => w.id === save.weapon) || WEAPONS[0];
+    const w = WEAPONS.find((x) => x.id === save.weapon);
+    if (w && !w.sidearm) return w;
+    return meleeWeapons()[0] || WEAPONS[0];
   }
 
   function weaponLevel(id) {
@@ -434,7 +450,7 @@
   }
 
   function cycleWeapon() {
-    const owned = WEAPONS.filter((w) => save.ownedWeapons.includes(w.id));
+    const owned = meleeWeapons().filter((w) => save.ownedWeapons.includes(w.id));
     if (owned.length < 2) return;
     const i = owned.findIndex((w) => w.id === save.weapon);
     const next = owned[(i + 1) % owned.length];
@@ -531,6 +547,7 @@
       defending: 0,
       attackCd: 0,
       kickCd: 0,
+      throwCd: 0,
       flip: 0,
       spin: 0,
       slash: 0,
@@ -666,7 +683,9 @@
     if (wave) wave.textContent = `${enemies.filter((e) => e.hp > 0).length + spawnQueue.length}`;
     if (weapon) {
       const w = weaponStats();
-      weapon.textContent = `${w.name} Nv.${weaponLevel(w.id)}`;
+      const s = sidearmStats();
+      const sLv = s ? weaponLevel(s.id) : 1;
+      weapon.textContent = `${w.name} Nv.${weaponLevel(w.id)} · ★${sLv}`;
     }
   }
 
@@ -728,8 +747,8 @@
       });
     } else {
       WEAPONS.forEach((w) => {
-        const owned = save.ownedWeapons.includes(w.id);
-        const eq = save.weapon === w.id;
+        const owned = w.sidearm || save.ownedWeapons.includes(w.id);
+        const eq = !w.sidearm && save.weapon === w.id;
         const lv = weaponLevel(w.id);
         const b = weaponBonus(w);
         const upCost = weaponUpgradeCost(w.id);
@@ -739,15 +758,26 @@
 
         const btn = document.createElement("button");
         btn.type = "button";
-        btn.className = "shop-item" + (eq ? " equipped" : "");
+        btn.className = "shop-item" + (eq ? " equipped" : "") + (w.sidearm ? " sidearm-item" : "");
         btn.disabled = !owned && save.gold < w.cost;
         const powerHint = owned
-          ? `Nv.${lv}/${WEAPON_MAX_LEVEL} · +${b.dmg} dmg · +${b.range} portée${w.ranged ? ` · ${b.stars} étoiles` : ""}`
+          ? `Nv.${lv}/${WEAPON_MAX_LEVEL} · +${b.dmg} dmg · +${b.range} portée${w.sidearm ? ` · ${b.stars} étoiles (secondaire ★)` : " (mêlée □)"}`
           : w.desc;
-        btn.innerHTML = `<span class="name">${w.name}${eq ? " ✓" : ""} <small>Nv.${owned ? lv : 1}</small></span>
-          <span class="price">${owned ? (eq ? "ÉQUIPÉ" : "Équiper") : w.cost + " ◆"}</span>
+        const priceLabel = w.sidearm
+          ? "SECONDAIRE"
+          : owned
+            ? eq
+              ? "ÉQUIPÉ"
+              : "Équiper"
+            : w.cost + " ◆";
+        btn.innerHTML = `<span class="name">${w.name}${eq ? " ✓" : ""}${w.sidearm ? " ★" : ""} <small>Nv.${owned ? lv : 1}</small></span>
+          <span class="price">${priceLabel}</span>
           <span class="desc">${powerHint}</span>`;
         btn.onclick = () => {
+          if (w.sidearm) {
+            showToast("Shuriken toujours actifs (★)");
+            return;
+          }
           if (!owned) {
             if (save.gold < w.cost) return;
             save.gold -= w.cost;
@@ -756,6 +786,7 @@
             save.weaponLevels[w.id] = save.weaponLevels[w.id] || 1;
           }
           save.weapon = w.id;
+          applyWeaponStatsToPlayer();
           persist();
           renderShop();
           updateHud();
@@ -769,13 +800,13 @@
           up.disabled = maxed || save.gold < upCost;
           up.innerHTML = `<span class="name">Améliorer ${w.name}</span>
             <span class="price">${maxed ? "MAX" : upCost + " ◆"}</span>
-            <span class="desc">${maxed ? "Puissance maximale" : `Nv.${lv} → ${lv + 1} (+${w.levelDmg || 3} dmg, +${w.levelRange || 4} portée)`}</span>`;
+            <span class="desc">${maxed ? "Puissance maximale" : `Nv.${lv} → ${lv + 1} (+${w.levelDmg || 3} dmg${w.sidearm ? ", +étoiles" : ", +" + (w.levelRange || 4) + " portée"})`}</span>`;
           up.onclick = () => {
             if (maxed || save.gold < upCost) return;
             save.gold -= upCost;
             if (!save.weaponLevels) save.weaponLevels = defaultWeaponLevels();
             save.weaponLevels[w.id] = lv + 1;
-            if (eq) applyWeaponStatsToPlayer();
+            if (eq || w.sidearm) applyWeaponStatsToPlayer();
             persist({ toast: `${w.name} Nv.${lv + 1}` });
             renderShop();
             updateHud();
@@ -920,9 +951,7 @@
   }
 
   function tryAttack() {
-    const w = weaponStats();
-    if (w.ranged) tryThrowShuriken();
-    else tryKatana();
+    tryKatana();
   }
 
   function tryKatana() {
@@ -953,15 +982,16 @@
   }
 
   function tryThrowShuriken() {
-    if (!player || player.attackCd > 0 || player.kicking > 0 || player.defending > 0.05) return;
+    if (!player || player.throwCd > 0 || player.defending > 0.05) return;
+    const side = sidearmStats();
+    if (!side) return;
     const aerial = !player.onGround;
-    const b = weaponBonus(weaponStats());
+    const b = weaponBonus(side);
     const count = Math.min(5, b.stars + (aerial ? 1 : 0));
-    player.attacking = 0.18;
-    player.attackCd = player.attackCdMax;
+    player.throwCd = 0.28 * b.speed;
     player.pose = "attack";
-    player.slash = 0.4;
-    const baseDmg = Math.max(8, Math.round(player.dmg * 0.85));
+    player.slash = 0.35;
+    const baseDmg = Math.max(8, Math.round((14 + (save.upgrades.dmg || 0) * 4 + b.dmg) * 0.9));
     const speedBonus = 620 + b.level * 25;
     for (let i = 0; i < count; i++) {
       const spread = (i - (count - 1) / 2) * (48 + b.level * 2);
@@ -1108,6 +1138,7 @@
     p.anim += dt * (p.onGround && moving ? gaitSpeed(p) : 3.2);
     if (p.attackCd > 0) p.attackCd -= dt;
     if (p.kickCd > 0) p.kickCd -= dt;
+    if (p.throwCd > 0) p.throwCd -= dt;
     if (p.attacking > 0) p.attacking -= dt;
     if (p.kicking > 0) p.kicking -= dt;
     if (p.defending > 0) p.defending -= dt;
@@ -1149,9 +1180,11 @@
     if (!guarding) {
       if (input.attackPressed) tryAttack();
       if (input.kickPressed) tryKick();
+      if (input.throwPressed) tryThrowShuriken();
     }
     input.attackPressed = false;
     input.kickPressed = false;
+    input.throwPressed = false;
 
     const wasAir = !p.onGround;
     applyPhysics(p, dt, true);
@@ -1673,6 +1706,10 @@
           if (v && !input.kick) input.kickPressed = true;
           input.kick = v;
         }
+        if (act === "throw") {
+          if (v && !input.throw) input.throwPressed = true;
+          input.throw = v;
+        }
         btn.classList.toggle("active", v);
       };
       btn.addEventListener("pointerdown", (e) => {
@@ -1699,6 +1736,7 @@
       }
       if (e.code === "KeyJ" || e.code === "KeyA") input.attackPressed = true;
       if (e.code === "KeyK" || e.code === "KeyE") input.kickPressed = true;
+      if (e.code === "KeyU" || e.code === "KeyF") input.throwPressed = true;
       if (e.code === "KeyN" && (state === "play" || state === "pause")) {
         skipToNextLevel();
       }
