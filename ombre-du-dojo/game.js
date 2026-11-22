@@ -121,8 +121,19 @@
     { id: "snow", name: "Neige", desc: "Camouflage blanc", cost: 160, sprite: "snow", owned: false },
   ];
   const WEAPONS = [
-    { id: "katana", name: "Katana", desc: "Lame équilibrée", cost: 0, dmg: 0, range: 0, owned: true },
-    { id: "nodachi", name: "Nodachi", desc: "+6 dégâts, +12 portée", cost: 140, dmg: 6, range: 12, owned: false },
+    { id: "katana", name: "Katana", desc: "Lame équilibrée (mêlée)", cost: 0, dmg: 0, range: 0, owned: true },
+    {
+      id: "shuriken",
+      name: "Shuriken",
+      desc: "Lancer distant — □ / J envoie 1–3 étoiles",
+      cost: 0,
+      dmg: 2,
+      range: 40,
+      owned: true,
+      ranged: true,
+      speed: 0.75,
+    },
+    { id: "nodachi", name: "Nodachi", desc: "+6 dégâts, +12 portée mêlée", cost: 140, dmg: 6, range: 12, owned: false },
     { id: "sai", name: "Sais jumeaux", desc: "+4 dégâts, attaque plus rapide", cost: 110, dmg: 4, range: -4, owned: false, speed: 0.85 },
   ];
   const UPGRADES = [
@@ -161,7 +172,7 @@
     outfit: "shadow",
     weapon: "katana",
     ownedOutfits: ["shadow"],
-    ownedWeapons: ["katana"],
+    ownedWeapons: ["katana", "shuriken"],
     upgrades: { hp: 0, dmg: 0, spd: 0, jump: 0, kick: 0, armor: 0 },
   });
 
@@ -172,6 +183,7 @@
   let enemies = [];
   let particles = [];
   let pickups = [];
+  let projectiles = [];
   let floatTexts = [];
   let spawnQueue = [];
   let spawnTimer = 0;
@@ -219,7 +231,7 @@
         ...p,
         upgrades: { ...defaultSave().upgrades, ...(p.upgrades || {}) },
         ownedOutfits: p.ownedOutfits || ["shadow"],
-        ownedWeapons: p.ownedWeapons || ["katana"],
+        ownedWeapons: Array.from(new Set([...(p.ownedWeapons || ["katana"]), "shuriken"])),
       };
     } catch {
       return defaultSave();
@@ -336,6 +348,23 @@
 
   function weaponStats() {
     return WEAPONS.find((w) => w.id === save.weapon) || WEAPONS[0];
+  }
+
+  function cycleWeapon() {
+    const owned = WEAPONS.filter((w) => save.ownedWeapons.includes(w.id));
+    if (owned.length < 2) return;
+    const i = owned.findIndex((w) => w.id === save.weapon);
+    const next = owned[(i + 1) % owned.length];
+    save.weapon = next.id;
+    if (player) {
+      const s = statsFromSave();
+      player.dmg = s.dmg;
+      player.range = s.range;
+      player.attackCdMax = s.attackCdMax;
+    }
+    persist();
+    updateHud();
+    showToast(next.ranged ? "Shuriken équipés" : `${next.name} équipé`);
   }
   function outfitSpriteKey() {
     const o = OUTFITS.find((x) => x.id === save.outfit) || OUTFITS[0];
@@ -528,6 +557,7 @@
     enemies = [];
     particles = [];
     pickups = [];
+    projectiles = [];
     floatTexts = [];
     cameraX = 0;
     spawnQueue = buildSpawnQueue(save.level);
@@ -770,6 +800,12 @@
     }
   }
 
+  function tryAttack() {
+    const w = weaponStats();
+    if (w.ranged) tryThrowShuriken();
+    else tryKatana();
+  }
+
   function tryKatana() {
     if (!player || player.attackCd > 0 || player.kicking > 0 || player.defending > 0.05) return;
     const aerial = !player.onGround;
@@ -787,7 +823,6 @@
     enemies.forEach((e) => {
       if (e.hp <= 0) return;
       if (Math.abs(e.x - ax) < range + e.w * 0.3 && Math.abs(e.y - player.y) < yTol) {
-        // nearby foes may raise a guard before the blade lands
         if (Math.random() < (e.type === "boss" ? 0.55 : e.type === "kunoichi" ? 0.4 : 0.28) && e.defending <= 0) {
           e.defending = 0.35;
           e.pose = "defend";
@@ -796,6 +831,82 @@
       }
     });
     addParticles(ax, player.y - (aerial ? 55 : 40), "#f0d9a8", aerial ? 9 : 5);
+  }
+
+  function tryThrowShuriken() {
+    if (!player || player.attackCd > 0 || player.kicking > 0 || player.defending > 0.05) return;
+    const aerial = !player.onGround;
+    const count = aerial ? 3 : 2;
+    player.attacking = 0.18;
+    player.attackCd = player.attackCdMax;
+    player.pose = "attack";
+    player.slash = 0.4;
+    const baseDmg = Math.max(8, Math.round(player.dmg * 0.85));
+    for (let i = 0; i < count; i++) {
+      const spread = (i - (count - 1) / 2) * 55;
+      projectiles.push({
+        x: player.x + player.facing * 28,
+        y: player.y - player.h * 0.55 + spread * 0.15,
+        vx: player.facing * (620 + Math.abs(player.vx) * 0.2),
+        vy: aerial ? -40 + i * 25 : spread * 0.15,
+        life: 1.35,
+        rot: Math.random() * Math.PI,
+        spin: player.facing * (14 + Math.random() * 6),
+        dmg: baseDmg,
+        hit: new Set(),
+      });
+    }
+    addParticles(player.x + player.facing * 30, player.y - player.h * 0.55, "#d8dde8", 5);
+  }
+
+  function updateProjectiles(dt) {
+    projectiles.forEach((p) => {
+      p.life -= dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vy += 40 * dt;
+      p.rot += p.spin * dt;
+      enemies.forEach((e) => {
+        if (e.hp <= 0 || p.hit.has(e)) return;
+        if (Math.abs(e.x - p.x) < e.w * 0.35 && Math.abs(e.y - e.h * 0.5 - p.y) < e.h * 0.45) {
+          p.hit.add(e);
+          if (Math.random() < 0.2 && e.defending <= 0) {
+            e.defending = 0.25;
+            e.pose = "defend";
+          }
+          hurtEnemy(e, p.dmg, Math.sign(p.vx) * 120);
+          addParticles(p.x, p.y, "#c0c8d8", 4);
+          p.life = Math.min(p.life, 0.05);
+        }
+      });
+    });
+    projectiles = projectiles.filter((p) => p.life > 0 && p.x > -40 && p.x < LEVEL_W + 40);
+  }
+
+  function drawShuriken(p) {
+    const sx = p.x - cameraX;
+    ctx.save();
+    ctx.translate(sx, p.y);
+    ctx.rotate(p.rot);
+    ctx.fillStyle = "#c5ccd6";
+    ctx.strokeStyle = "#2a3038";
+    ctx.lineWidth = 1.2;
+    for (let i = 0; i < 4; i++) {
+      ctx.rotate(Math.PI / 2);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(3, -3);
+      ctx.lineTo(0, -11);
+      ctx.lineTo(-3, -3);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.arc(0, 0, 2.8, 0, Math.PI * 2);
+    ctx.fillStyle = "#8a9098";
+    ctx.fill();
+    ctx.restore();
   }
 
   function tryKick() {
@@ -915,7 +1026,7 @@
     }
     input.jumpPressed = false;
     if (!guarding) {
-      if (input.attackPressed) tryKatana();
+      if (input.attackPressed) tryAttack();
       if (input.kickPressed) tryKick();
     }
     input.attackPressed = false;
@@ -1073,6 +1184,7 @@
     }
     updatePlayer(dt);
     updateEnemies(dt);
+    updateProjectiles(dt);
     updatePickups(dt);
     updateFx(dt);
 
@@ -1388,6 +1500,7 @@
       if (e.hp > 0 || e.hitFlash > 0) drawActor(e, e.sprite, false);
     });
     if (player) drawActor(player, outfitSpriteKey(), true);
+    projectiles.forEach(drawShuriken);
 
     particles.forEach((p) => {
       ctx.globalAlpha = Math.max(0, p.life * 2);
@@ -1467,6 +1580,10 @@
       if (e.code === "KeyK" || e.code === "KeyE") input.kickPressed = true;
       if (e.code === "KeyN" && (state === "play" || state === "pause")) {
         skipToNextLevel();
+      }
+      if ((e.code === "KeyC" || e.code === "Tab") && state === "play") {
+        e.preventDefault();
+        cycleWeapon();
       }
       if (e.code === "Escape" && state === "play") {
         state = "pause";
