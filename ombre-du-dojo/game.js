@@ -1259,7 +1259,7 @@
   function updatePlayer(dt) {
     const p = player;
     const moving = Math.abs(p.vx) > 16;
-    if (p.onGround && moving) p.gait += Math.abs(p.vx) * dt * 0.048;
+    if (p.onGround && moving) p.gait += Math.abs(p.vx) * dt * 0.075;
     else if (p.onGround) p.gait += dt * 0.9; // slow idle sway seed
     p.anim += dt * (p.onGround && moving ? gaitSpeed(p) : 2.6);
     if (p.attackCd > 0) p.attackCd -= dt;
@@ -1346,7 +1346,7 @@
     enemies.forEach((e) => {
       if (e.hp <= 0) return;
       const weight = e.type === "oni" || e.type === "boss" ? 0.72 : e.type === "kunoichi" ? 1.25 : 1;
-      if (e.onGround && Math.abs(e.vx) > 18) e.gait = (e.gait || 0) + Math.abs(e.vx) * dt * 0.045 * weight;
+      if (e.onGround && Math.abs(e.vx) > 18) e.gait = (e.gait || 0) + Math.abs(e.vx) * dt * 0.07 * weight;
       e.anim += dt * (Math.abs(e.vx) > 18 ? gaitSpeed(e) * weight : 2.8);
       if (e.hitFlash > 0) e.hitFlash -= dt;
       if (e.attackCd > 0) e.attackCd -= dt;
@@ -1560,54 +1560,139 @@
     });
   }
 
-  function drawWalkLegs(ent, drawH, walking) {
-    if (!walking) return;
-    const phase = ent.gait || ent.anim;
-    // ease stride for less mechanical pendulum
-    const a = Math.sin(phase);
-    const b = Math.sin(phase + Math.PI);
-    const amp = Math.min(1, Math.abs(ent.vx) / (ent.speed || 160));
-    const hipY = -drawH * 0.34;
-    const legLen = drawH * 0.46;
-    ctx.lineCap = "round";
-    ctx.strokeStyle = "rgba(18,14,10,0.45)";
-    ctx.lineWidth = Math.max(5, drawH * 0.055);
-    const footLift = (s) => Math.max(0, -s) * 8 * amp;
-    ctx.beginPath();
-    ctx.moveTo(-5, hipY);
-    ctx.quadraticCurveTo(-6 + a * 12 * amp, hipY + legLen * 0.52, a * 26 * amp, -2 + footLift(b));
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(5, hipY);
-    ctx.quadraticCurveTo(6 + b * 12 * amp, hipY + legLen * 0.52, b * 28 * amp, -2 + footLift(a));
-    ctx.stroke();
-    ctx.fillStyle = "rgba(28,22,16,0.55)";
-    ctx.beginPath();
-    ctx.ellipse(a * 26 * amp, footLift(b), 8, 3.2, a * 0.18, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(b * 28 * amp, footLift(a), 8, 3.2, b * 0.18, 0, Math.PI * 2);
-    ctx.fill();
+  function limbColor(isPlayer, alpha) {
+    return isPlayer ? `rgba(28, 36, 44,${alpha})` : `rgba(72, 38, 28,${alpha})`;
   }
 
-  function drawWalkArms(ent, drawH, walking) {
+  /** Articulated thigh+shin so walk reads clearly on ninja and enemies. */
+  function drawWalkLegs(ent, drawH, walking, isPlayer) {
+    if (!walking) return;
+    const phase = ent.gait || ent.anim;
+    const amp = Math.max(0.55, Math.min(1.15, Math.abs(ent.vx) / Math.max(90, (ent.speed || 160) * 0.55)));
+    const hipY = -drawH * 0.32;
+    const thigh = drawH * 0.26;
+    const shin = drawH * 0.24;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    function leg(side, swing) {
+      const hipX = side * 7;
+      const hipAngle = swing * 0.72 * amp;
+      const kneeBend = 0.35 + Math.max(0, -swing) * 0.55 * amp;
+      const kx = hipX + Math.sin(hipAngle) * thigh;
+      const ky = hipY + Math.cos(hipAngle) * thigh;
+      const footAngle = hipAngle + kneeBend;
+      const fx = kx + Math.sin(footAngle) * shin;
+      const fy = Math.min(-2, ky + Math.cos(footAngle) * shin);
+      ctx.strokeStyle = limbColor(isPlayer, 0.92);
+      ctx.lineWidth = Math.max(7, drawH * 0.07);
+      ctx.beginPath();
+      ctx.moveTo(hipX, hipY);
+      ctx.lineTo(kx, ky);
+      ctx.lineTo(fx, fy);
+      ctx.stroke();
+      // foot
+      ctx.fillStyle = limbColor(isPlayer, 0.95);
+      ctx.beginPath();
+      ctx.ellipse(fx + side * 4, fy + 1, 10, 4, swing * 0.2, 0, Math.PI * 2);
+      ctx.fill();
+      // knee joint
+      ctx.fillStyle = "rgba(232,168,74,0.35)";
+      ctx.beginPath();
+      ctx.arc(kx, ky, 3.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    const a = Math.sin(phase);
+    leg(-1, a);
+    leg(1, -a);
+  }
+
+  /** Opposite arm swing while walking. */
+  function drawWalkArms(ent, drawH, walking, isPlayer) {
     if (!walking) return;
     const phase = ent.gait || ent.anim;
     const a = Math.sin(phase);
-    const amp = Math.min(1, Math.abs(ent.vx) / (ent.speed || 160));
-    const shoulder = -drawH * 0.6;
-    ctx.strokeStyle = "rgba(22,18,14,0.35)";
-    ctx.lineWidth = Math.max(3.5, drawH * 0.038);
+    const amp = Math.max(0.5, Math.min(1.1, Math.abs(ent.vx) / Math.max(90, (ent.speed || 160) * 0.55)));
+    const shoulder = -drawH * 0.58;
+    const armLen = drawH * 0.28;
     ctx.lineCap = "round";
-    // opposite arm swing to legs
+    ctx.strokeStyle = limbColor(isPlayer, 0.85);
+    ctx.lineWidth = Math.max(5, drawH * 0.05);
+
+    function arm(side, swing) {
+      const sx = side * 9;
+      const ang = -0.15 + swing * 0.85 * amp;
+      const ex = sx + Math.sin(ang) * armLen;
+      const ey = shoulder + Math.cos(ang) * armLen;
+      ctx.beginPath();
+      ctx.moveTo(sx, shoulder);
+      ctx.quadraticCurveTo(sx + side * 6, shoulder + armLen * 0.45, ex, ey);
+      ctx.stroke();
+    }
+    arm(-1, -a); // opposite to front leg
+    arm(1, a);
+  }
+
+  /** Sword arm + katana blade driven by attack progress t∈[0..1]. */
+  function drawKatanaArms(ent, drawH, t, isPlayer) {
+    const shoulderY = -drawH * 0.56;
+    const rearX = -10;
+    const swordShoulderX = 8;
+    // wind-up → cut → follow-through
+    const ease = t < 0.25 ? t / 0.25 : t < 0.7 ? 0.15 + ((t - 0.25) / 0.45) * 0.85 : 1;
+    const swordAng = -2.1 + ease * 3.1; // overhead to low slash
+    const armLen = drawH * 0.3;
+    const handX = swordShoulderX + Math.cos(swordAng) * armLen;
+    const handY = shoulderY + Math.sin(swordAng) * armLen;
+
+    ctx.lineCap = "round";
+    // rear arm braced
+    ctx.strokeStyle = limbColor(isPlayer, 0.88);
+    ctx.lineWidth = Math.max(5, drawH * 0.048);
     ctx.beginPath();
-    ctx.moveTo(-7, shoulder);
-    ctx.quadraticCurveTo(-10 - a * 10 * amp, shoulder + drawH * 0.18, -4 - a * 20 * amp, shoulder + drawH * 0.28);
+    ctx.moveTo(rearX, shoulderY);
+    ctx.quadraticCurveTo(rearX - 8, shoulderY + 18, rearX - 4, shoulderY + 32);
     ctx.stroke();
+
+    // sword arm
+    ctx.lineWidth = Math.max(6, drawH * 0.055);
     ctx.beginPath();
-    ctx.moveTo(7, shoulder);
-    ctx.quadraticCurveTo(10 + a * 10 * amp, shoulder + drawH * 0.18, 4 + a * 20 * amp, shoulder + drawH * 0.28);
+    ctx.moveTo(swordShoulderX, shoulderY);
+    ctx.lineTo(handX, handY);
     ctx.stroke();
+
+    // hand
+    ctx.fillStyle = isPlayer ? "rgba(232,200,150,0.9)" : "rgba(210,160,120,0.9)";
+    ctx.beginPath();
+    ctx.arc(handX, handY, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // katana blade from hand along slash direction
+    const bladeLen = isPlayer ? 46 : 38;
+    const tipX = handX + Math.cos(swordAng) * bladeLen;
+    const tipY = handY + Math.sin(swordAng) * bladeLen;
+    ctx.strokeStyle = isPlayer ? "rgba(240,220,170,0.98)" : "rgba(255,170,140,0.95)";
+    ctx.lineWidth = isPlayer ? 3.5 : 3;
+    ctx.beginPath();
+    ctx.moveTo(handX, handY);
+    ctx.lineTo(tipX, tipY);
+    ctx.stroke();
+    // edge flash
+    ctx.strokeStyle = "rgba(255,255,255,0.55)";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(handX + Math.cos(swordAng) * 6, handY + Math.sin(swordAng) * 6);
+    ctx.lineTo(tipX, tipY);
+    ctx.stroke();
+    // slash trail
+    if (ease > 0.2 && ease < 0.95) {
+      ctx.strokeStyle = isPlayer ? "rgba(232,168,74,0.55)" : "rgba(255,120,90,0.45)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(swordShoulderX, shoulderY, armLen + bladeLen * 0.55, swordAng - 0.85, swordAng);
+      ctx.stroke();
+    }
   }
 
   function drawSplitWalkSprite(spr, drawW, drawH, phase, walking, flipping) {
@@ -1624,24 +1709,17 @@
       return;
     }
     const stride = Math.sin(phase);
-    const bob = Math.abs(Math.sin(phase)) * 4.5;
-    const lean = stride * 0.08;
-    const split = 0.58;
+    const bob = Math.abs(Math.sin(phase)) * 6;
+    const lean = stride * 0.12;
+    // crop sprite to torso only so articulated legs replace the frozen lower half
+    const split = 0.52;
     const torsoH = drawH * split;
-    const legsH = drawH * (1 - split);
     const srcTorsoH = spr.height * split;
-    const srcLegsH = spr.height * (1 - split);
 
     ctx.save();
-    ctx.translate(stride * 1.2, -drawH + torsoH * 0.5 - bob);
+    ctx.translate(stride * 2, -drawH + torsoH * 0.5 - bob);
     ctx.rotate(-lean);
     ctx.drawImage(spr, 0, 0, spr.width, srcTorsoH, -drawW * 0.5, -torsoH * 0.5, drawW, torsoH);
-    ctx.restore();
-
-    ctx.save();
-    ctx.translate(stride * 5, -legsH * 0.04 - bob * 0.2);
-    ctx.transform(1, 0, stride * 0.14, 1 - Math.abs(stride) * 0.025, 0, 0);
-    ctx.drawImage(spr, 0, srcTorsoH, spr.width, srcLegsH, -drawW * 0.5, -legsH, drawW, legsH + 2);
     ctx.restore();
   }
 
@@ -1734,9 +1812,16 @@
       ctx.fillRect(-ent.w * 0.3, -ent.h, ent.w * 0.6, ent.h);
     }
 
-    if (walking && !flipping) {
-      drawWalkLegs(ent, drawH, true);
-      drawWalkArms(ent, drawH, true);
+    const attackingNow =
+      (isPlayer && ent.attacking > 0) || (!isPlayer && ent.pose === "attack" && (ent.swing || 0) > 0);
+    const kickingNow = (isPlayer && ent.kicking > 0) || (!isPlayer && ent.pose === "kick");
+
+    // Legs always when grounded and moving (including light combat shuffle)
+    if (!flipping && ent.onGround && Math.abs(ent.vx) > 10 && !kickingNow) {
+      drawWalkLegs(ent, drawH, true, isPlayer);
+    }
+    if (walking && !flipping && !attackingNow) {
+      drawWalkArms(ent, drawH, true, isPlayer);
     }
     if (flipping) {
       ctx.strokeStyle = "rgba(232,168,74,0.4)";
@@ -1746,39 +1831,27 @@
       ctx.stroke();
     }
 
-    // realistic katana arc
-    const slash = isPlayer ? ent.slash || 0 : ent.swing || 0;
-    if ((isPlayer && ent.attacking > 0) || (!isPlayer && ent.pose === "attack" && slash > 0)) {
-      const t = isPlayer ? 1 - Math.min(1, ent.attacking / 0.32) : 1 - slash;
-      ctx.strokeStyle = isPlayer ? "rgba(232,168,74,0.95)" : "rgba(255,120,90,0.85)";
-      ctx.lineWidth = isPlayer ? 4 : 3;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      const a0 = -1.4 + t * 0.2;
-      const a1 = a0 + 2.2 * Math.min(1, t + 0.35);
-      ctx.arc(ent.w * 0.05, -ent.h * 0.48, isPlayer ? 38 : 32, a0, a1);
-      ctx.stroke();
-      ctx.fillStyle = "rgba(255,240,200,0.85)";
-      const tipX = Math.cos(a1) * 38;
-      const tipY = -ent.h * 0.48 + Math.sin(a1) * 38;
-      ctx.beginPath();
-      ctx.arc(tipX, tipY, 3.5, 0, Math.PI * 2);
-      ctx.fill();
+    // Katana: arm swing drives the blade
+    if (attackingNow) {
+      const progress = isPlayer
+        ? 1 - Math.min(1, ent.attacking / 0.32)
+        : Math.min(1, Math.max(0, 1 - (ent.swing || 0)));
+      drawKatanaArms(ent, drawH, progress, isPlayer);
     }
 
-    // realistic kick extension
-    if ((isPlayer && ent.kicking > 0) || (!isPlayer && ent.pose === "kick")) {
+    // Kick: extended striking leg
+    if (kickingNow) {
       const t = isPlayer ? 1 - Math.min(1, ent.kicking / 0.36) : 0.7;
-      ctx.strokeStyle = "rgba(62,207,154,0.9)";
-      ctx.lineWidth = 5;
+      ctx.strokeStyle = limbColor(isPlayer, 0.95);
+      ctx.lineWidth = Math.max(7, drawH * 0.07);
       ctx.lineCap = "round";
       ctx.beginPath();
-      ctx.moveTo(0, -ent.h * 0.28);
-      ctx.quadraticCurveTo(ent.w * 0.15, -ent.h * (0.1 - t * 0.05), ent.w * (0.35 + t * 0.35), -ent.h * (0.18 - t * 0.12));
+      ctx.moveTo(4, -drawH * 0.3);
+      ctx.quadraticCurveTo(18 + t * 10, -drawH * 0.12, 28 + t * 36, -drawH * (0.22 - t * 0.1));
       ctx.stroke();
-      ctx.fillStyle = "rgba(180,255,220,0.8)";
+      ctx.fillStyle = "rgba(62,207,154,0.85)";
       ctx.beginPath();
-      ctx.arc(ent.w * (0.35 + t * 0.35), -ent.h * (0.18 - t * 0.12), 5, 0, Math.PI * 2);
+      ctx.arc(28 + t * 36, -drawH * (0.22 - t * 0.1), 6, 0, Math.PI * 2);
       ctx.fill();
     }
 
