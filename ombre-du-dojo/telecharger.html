@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0a1218" />
   <title>Télécharger — Ombre du Dojo</title>
+  <link rel="icon" type="image/png" href="assets/icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600&family=Teko:wght@500;700&display=swap" rel="stylesheet" />
@@ -38,6 +40,21 @@
       letter-spacing: 0.04em; text-transform: uppercase; color: var(--lantern);
     }
     .lead { margin: 0 0 1.5rem; color: var(--muted); line-height: 1.45; }
+    .app-icon {
+      width: 112px; height: 112px; border-radius: 24px;
+      box-shadow: 0 16px 36px rgba(0,0,0,.45);
+      margin: 0 auto 1.25rem; display: block;
+    }
+    .apk-card {
+      margin: 0 0 1.75rem; padding: 1.1rem 1rem 1.25rem;
+      border-radius: 14px; text-align: left;
+      background: rgba(0,0,0,.35); border: 1px solid rgba(232,168,74,.35);
+    }
+    .apk-card h2 {
+      margin: 0 0 0.35rem; font-family: Teko, Impact, sans-serif;
+      font-size: 1.6rem; letter-spacing: .04em; color: var(--lantern);
+    }
+    .apk-card p { margin: 0 0 0.9rem; color: var(--muted); font-size: .88rem; line-height: 1.4; }
     .qr-plate {
       display: inline-block; padding: 1rem; border-radius: 1rem;
       background: #f4efe6; box-shadow: 0 18px 40px rgba(0,0,0,0.35);
@@ -61,6 +78,7 @@
       appearance: none; text-decoration: none; min-width: 10rem; padding: 0.85rem 1.25rem;
       font-family: Teko, Impact, sans-serif; font-size: 1.35rem; letter-spacing: 0.08em;
       text-transform: uppercase; border-radius: 4px; border: 1px solid transparent;
+      display: inline-flex; align-items: center; justify-content: center;
     }
     a.btn.primary {
       background: linear-gradient(180deg,#f0b85a,#d4532a); color: #1a0e06;
@@ -69,25 +87,38 @@
     a.btn.ghost {
       background: transparent; border-color: rgba(232,232,220,.28); color: var(--paper);
     }
+    .note { margin-top: 1rem; font-size: .75rem; color: #5a6a72; }
   </style>
 </head>
 <body>
   <main>
     <p class="eyebrow">JEUX ÉMILE</p>
     <h1>Ombre du Dojo</h1>
-    <p class="lead">Scanne le QR code pour ouvrir le jeu sur ton téléphone, puis ajoute-le à l’écran d’accueil.</p>
+    <img class="app-icon" src="assets/icons/icon-512.png" width="112" height="112" alt="Icône Ombre du Dojo" />
+    <p class="lead">Installe l’APK Android : l’icône du ninja apparaît sur ton bureau / écran d’accueil.</p>
+
+    <div class="apk-card">
+      <h2>APK Android</h2>
+      <p>Fichier <code>ombre-du-dojo.apk</code> (~8 Mo). Autorise l’installation depuis des sources inconnues si demandé, puis ouvre l’app depuis l’icône.</p>
+      <div class="actions" style="margin-top:0; justify-content:flex-start">
+        <a class="btn primary" href="download/ombre-du-dojo.apk" download="ombre-du-dojo.apk">Télécharger l’APK</a>
+      </div>
+      <p class="note">Package : com.jeuxemile.ombredudojo · version 1.0</p>
+    </div>
+
+    <p class="lead" style="margin-bottom:1rem">Ou scanne le QR pour la version web / PWA.</p>
     <div class="qr-plate">
       <img src="assets/qr-download.png" width="280" height="280" alt="QR code vers https://ombre-du-dojo.apps.grok.bot" />
     </div>
     <p class="url"><a href="https://ombre-du-dojo.apps.grok.bot" style="color:inherit">https://ombre-du-dojo.apps.grok.bot</a></p>
     <ol class="steps">
-      <li>Scanne le QR avec l’appareil photo.</li>
-      <li>Ouvre le lien dans le navigateur.</li>
-      <li>Choisis « Ajouter à l’écran d’accueil » / Installer.</li>
+      <li>Télécharge l’APK (recommandé) ou scanne le QR.</li>
+      <li>Installe → accepte si Android demande une source externe.</li>
+      <li>Lance <strong>Ombre du Dojo</strong> depuis l’icône sur le bureau.</li>
     </ol>
     <div class="actions">
-      <a class="btn primary" href="https://ombre-du-dojo.apps.grok.bot">Ouvrir le jeu</a>
-      <a class="btn ghost" href="assets/qr-download-card.png" download="ombre-du-dojo-qr.png">Télécharger le QR</a>
+      <a class="btn primary" href="download/ombre-du-dojo.apk" download="ombre-du-dojo.apk">APK Android</a>
+      <a class="btn ghost" href="https://ombre-du-dojo.apps.grok.bot">Ouvrir le jeu web</a>
       <a class="btn ghost" href="./">Retour</a>
     </div>
   </main>

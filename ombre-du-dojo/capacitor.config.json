@@ -1,0 +1,11 @@
+{
+  "appId": "com.jeuxemile.ombredudojo",
+  "appName": "Ombre du Dojo",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}
