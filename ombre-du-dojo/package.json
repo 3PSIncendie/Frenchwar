@@ -1,10 +1,10 @@
 {
   "name": "ombre-du-dojo",
   "version": "1.0.0",
-  "description": "Combat **vue de côté** façon shinobi : plateformes, katana + coup de pied, décors japonais, boutique (tenues / armes / améliorations).",
+  "description": "Combat **vue de c\u00f4t\u00e9** fa\u00e7on shinobi : plateformes, katana + coup de pied, d\u00e9cors japonais, boutique (tenues / armes / am\u00e9liorations).",
   "main": "game.js",
   "scripts": {
-    "sync:www": "rm -rf www && mkdir -p www && cp index.html style.css game.js manifest.webmanifest telecharger.html icon.svg www/ && cp -a assets download www/",
+    "sync:www": "rm -rf www && mkdir -p www && cp index.html style.css game.js manifest.webmanifest telecharger.html icon.svg version.json sw.js www/ && cp -a assets www/",
     "sync": "npm run sync:www && npx cap sync android",
     "apk": "npm run sync && cd android && ./gradlew assembleDebug && mkdir -p ../download && cp app/build/outputs/apk/debug/app-debug.apk ../download/ombre-du-dojo.apk",
     "test": "echo \"Error: no test specified\" && exit 1"

@@ -12,6 +12,8 @@ APK prêt avec icône bureau :
 
 Après installation, lance **Ombre du Dojo** depuis l’icône ninja sur l’écran d’accueil.
 
+À **chaque ouverture**, l’APK recharge la version live (`https://ombre-du-dojo.apps.grok.bot`) — les maj web s’appliquent sans réinstaller. Le navigateur / PWA vérifie aussi `version.json` et se met à jour.
+
 Reconstruire l’APK (SDK Android requis) :
 
 ```bash

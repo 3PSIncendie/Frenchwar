@@ -3,6 +3,8 @@
   "appName": "Ombre du Dojo",
   "webDir": "www",
   "server": {
+    "url": "https://ombre-du-dojo.apps.grok.bot",
+    "cleartext": false,
     "androidScheme": "https"
   },
   "android": {
