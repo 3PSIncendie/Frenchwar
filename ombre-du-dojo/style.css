@@ -93,25 +93,53 @@ h2 { font-size: clamp(2.2rem, 10vw, 3.2rem); }
   font-size: .7rem; cursor: pointer;
 }
 
+.hud-next {
+  pointer-events: auto; margin-top: 8px; appearance: none; cursor: pointer;
+  font-family: Teko, Impact, sans-serif; font-size: .95rem; letter-spacing: .04em;
+  padding: 6px 12px; border-radius: 6px; color: #1a0e06;
+  border: 1px solid rgba(232,168,74,.6);
+  background: linear-gradient(180deg,#f0b85a,#d4532a);
+  box-shadow: 0 4px 14px rgba(212,83,42,.35);
+}
+
 #controls {
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 12;
   display: flex; justify-content: space-between; align-items: flex-end;
-  padding: 0 12px calc(12px + var(--safe-b)); pointer-events: none;
+  padding: 0 10px calc(10px + var(--safe-b)); pointer-events: none;
 }
 .ctrl-cluster { display: flex; gap: 10px; align-items: flex-end; pointer-events: auto; }
-.ctrl-stack { display: flex; flex-direction: column; gap: 10px; }
-.ctrl {
-  width: 72px; height: 72px; border-radius: 50%;
-  border: 2px solid rgba(232,168,74,.4); background: rgba(8,18,24,.75);
-  color: var(--paper); font-size: 1.4rem; cursor: pointer;
+
+/* Croix directionnelle PlayStation */
+.dpad {
+  position: relative; width: 168px; height: 168px;
+  filter: drop-shadow(0 6px 12px rgba(0,0,0,.45));
 }
-.ctrl.jump,.ctrl.kick { width: 64px; height: 64px; font-size: 1.25rem; }
-.ctrl.attack {
-  width: 88px; height: 88px; font-size: 1.7rem;
-  border-color: rgba(212,83,42,.65); background: rgba(212,83,42,.28);
+.dpad-btn {
+  position: absolute; width: 54px; height: 54px; border-radius: 10px;
+  border: 2px solid rgba(200,210,220,.35); background: rgba(12,20,28,.82);
+  color: var(--paper); font-size: 1.05rem; cursor: pointer;
 }
-.ctrl.kick { border-color: rgba(62,207,154,.5); color: var(--jade); }
-.ctrl:active,.ctrl.active { background: rgba(232,168,74,.3); transform: scale(.94); }
+.dpad-btn.up { left: 57px; top: 0; }
+.dpad-btn.down { left: 57px; bottom: 0; }
+.dpad-btn.left { left: 0; top: 57px; }
+.dpad-btn.right { right: 0; top: 57px; }
+
+/* Boutons face PlayStation (losange) */
+.face-pad {
+  position: relative; width: 168px; height: 168px;
+  filter: drop-shadow(0 6px 12px rgba(0,0,0,.45));
+}
+.face {
+  position: absolute; width: 56px; height: 56px; border-radius: 50%;
+  border: 2px solid rgba(232,168,74,.4); background: rgba(8,18,24,.8);
+  color: var(--paper); font-size: 1.25rem; font-weight: 700; cursor: pointer;
+}
+.face.jump { left: 56px; top: 0; color: #7ad4a8; border-color: rgba(122,212,168,.55); }
+.face.kick { right: 0; top: 56px; color: #f0a0a8; border-color: rgba(240,160,168,.55); }
+.face.attack { left: 0; top: 56px; color: #a8c8f0; border-color: rgba(168,200,240,.55); }
+.face.defend { left: 56px; bottom: 0; color: #d0d0d8; border-color: rgba(200,200,210,.45); }
+
+.ctrl:active,.ctrl.active { background: rgba(232,168,74,.32) !important; transform: scale(.93); }
 
 .shop-gold,.shop-level {
   margin: 0 0 8px; color: var(--lantern); font-family: Teko, Impact, sans-serif; font-size: 1.45rem;
@@ -141,8 +169,12 @@ h2 { font-size: clamp(2.2rem, 10vw, 3.2rem); }
 
 @media (orientation: landscape) and (max-height: 500px) {
   h1 { font-size: 2.4rem; }
-  .ctrl { width: 56px; height: 56px; }
-  .ctrl.attack { width: 70px; height: 70px; }
-  .ctrl.jump,.ctrl.kick { width: 52px; height: 52px; }
+  .dpad, .face-pad { width: 132px; height: 132px; }
+  .dpad-btn { width: 42px; height: 42px; font-size: .9rem; }
+  .dpad-btn.up, .dpad-btn.down { left: 45px; }
+  .dpad-btn.left, .dpad-btn.right { top: 45px; }
+  .face { width: 44px; height: 44px; font-size: 1rem; }
+  .face.jump, .face.defend { left: 44px; }
+  .face.attack, .face.kick { top: 44px; }
   .shop-list { max-height: 32vh; }
 }

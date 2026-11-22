@@ -191,12 +191,14 @@
   const input = {
     left: false,
     right: false,
+    down: false,
     jump: false,
     jumpPressed: false,
     attack: false,
     attackPressed: false,
     kick: false,
     kickPressed: false,
+    defend: false,
   };
 
   const $ = (id) => document.getElementById(id);
@@ -365,8 +367,13 @@
       onGround: true,
       attacking: 0,
       kicking: 0,
+      defending: 0,
       attackCd: 0,
       kickCd: 0,
+      flip: 0,
+      spin: 0,
+      slash: 0,
+      kickSwing: 0,
       invuln: 0,
       hitFlash: 0,
       anim: 0,
@@ -433,12 +440,27 @@
       facing: -1,
       attackCd: 0.5,
       attackWind: 0,
+      defending: 0,
+      defendCd: 0.2 + Math.random() * 0.4,
+      hopCd: 0.6 + Math.random(),
       hitFlash: 0,
       anim: Math.random() * 8,
+      swing: 0,
       onGround: true,
       pose: "run",
     });
     if (type === "boss") cycleDecor(true);
+  }
+
+  function skipToNextLevel() {
+    if (state === "play" || state === "pause" || state === "won" || state === "dead" || state === "shop") {
+      if (state === "play" || state === "pause") {
+        save.gold += 10 + save.level * 2;
+        save.level += 1;
+        persist();
+      }
+      startLevel();
+    }
   }
 
   function startLevel() {
@@ -574,20 +596,32 @@
     save.gold += bonus;
     save.level += 1;
     persist();
-    $("over-title").textContent = "Victoire !";
-    $("over-msg").textContent = `Niveau terminé. +${bonus} ◆ — or ${save.gold}`;
-    $("btn-shop-after").classList.remove("hidden");
-    $("btn-retry").classList.add("hidden");
+    const next = $("over-title");
+    const msg = $("over-msg");
+    const shop = $("btn-shop-after");
+    const retry = $("btn-retry");
+    const nextBtn = $("btn-next-after");
+    if (next) next.textContent = "Victoire !";
+    if (msg) msg.textContent = `Niveau terminé. +${bonus} ◆ — or ${save.gold}`;
+    if (shop) shop.classList.remove("hidden");
+    if (retry) retry.classList.add("hidden");
+    if (nextBtn) nextBtn.classList.remove("hidden");
     showScreen("over");
   }
 
   function levelLost() {
     state = "dead";
     persist();
-    $("over-title").textContent = "Défaite";
-    $("over-msg").textContent = `Niveau ${save.level}. Or conservé: ${save.gold} ◆`;
-    $("btn-shop-after").classList.remove("hidden");
-    $("btn-retry").classList.remove("hidden");
+    const next = $("over-title");
+    const msg = $("over-msg");
+    const shop = $("btn-shop-after");
+    const retry = $("btn-retry");
+    const nextBtn = $("btn-next-after");
+    if (next) next.textContent = "Défaite";
+    if (msg) msg.textContent = `Niveau ${save.level}. Or conservé: ${save.gold} ◆`;
+    if (shop) shop.classList.remove("hidden");
+    if (retry) retry.classList.remove("hidden");
+    if (nextBtn) nextBtn.classList.remove("hidden");
     showScreen("over");
   }
 
@@ -610,6 +644,21 @@
 
   function hurtPlayer(amount, fromX) {
     if (!player || player.invuln > 0 || player.hp <= 0) return;
+    if (player.defending > 0 || input.defend) {
+      const blocked = Math.max(1, Math.round(amount * 0.25 * (1 - player.armor)));
+      player.hp -= blocked;
+      player.invuln = 0.35;
+      player.hitFlash = 0.12;
+      player.vx += fromX < player.x ? 60 : -60;
+      addParticles(player.x, player.y - 50, "#a8c8f0", 6);
+      addFloat(player.x, player.y - 70, "PARÉ", "#a8c8f0");
+      shake = 4;
+      if (player.hp <= 0) {
+        player.hp = 0;
+        levelLost();
+      }
+      return;
+    }
     const dmg = Math.max(1, Math.round(amount * (1 - player.armor)));
     player.hp -= dmg;
     player.invuln = save.level <= 3 ? 1 : 0.75;
@@ -627,13 +676,25 @@
   }
 
   function hurtEnemy(e, amount, knock) {
-    e.hp -= amount;
-    e.hitFlash = 0.16;
-    e.pose = "hurt";
-    e.vx += knock;
-    hitStop = Math.max(hitStop, 0.04);
-    addParticles(e.x, e.y - e.h * 0.5, "#e8a84a", 7);
-    addFloat(e.x, e.y - e.h - 8, `-${amount}`, "#ffe2a8");
+    if (e.defending > 0) {
+      const blocked = Math.max(1, Math.round(amount * 0.3));
+      e.hp -= blocked;
+      e.hitFlash = 0.1;
+      e.vx += knock * 0.25;
+      e.defending = Math.max(e.defending, 0.18);
+      addFloat(e.x, e.y - e.h - 8, "PARÉ", "#a8c8f0");
+      addParticles(e.x, e.y - e.h * 0.5, "#a8c8f0", 4);
+      if (e.hp <= 0) e.hp = 0;
+      else return;
+    } else {
+      e.hp -= amount;
+      e.hitFlash = 0.16;
+      e.pose = "hurt";
+      e.vx += knock;
+      hitStop = Math.max(hitStop, 0.04);
+      addParticles(e.x, e.y - e.h * 0.5, "#e8a84a", 7);
+      addFloat(e.x, e.y - e.h - 8, `-${amount}`, "#ffe2a8");
+    }
     if (e.hp <= 0) {
       e.hp = 0;
       save.gold += e.gold;
@@ -655,37 +716,59 @@
   }
 
   function tryKatana() {
-    if (!player || player.attackCd > 0 || player.kicking > 0) return;
-    player.attacking = 0.22;
-    player.attackCd = player.attackCdMax;
+    if (!player || player.attackCd > 0 || player.kicking > 0 || player.defending > 0.05) return;
+    const aerial = !player.onGround;
+    player.attacking = aerial ? 0.32 : 0.26;
+    player.slash = 1;
+    player.attackCd = player.attackCdMax * (aerial ? 0.85 : 1);
     player.pose = "attack";
-    const range = player.range;
+    if (aerial) {
+      player.spin = Math.max(player.spin, 0.55);
+      player.vy = Math.min(player.vy, -40);
+    }
+    const range = player.range + (aerial ? 10 : 0);
     const ax = player.x + player.facing * (player.w * 0.2 + range * 0.5);
+    const yTol = aerial ? 90 : 70;
     enemies.forEach((e) => {
       if (e.hp <= 0) return;
-      if (Math.abs(e.x - ax) < range + e.w * 0.3 && Math.abs(e.y - player.y) < 70) {
-        hurtEnemy(e, player.dmg, player.facing * 160);
+      if (Math.abs(e.x - ax) < range + e.w * 0.3 && Math.abs(e.y - player.y) < yTol) {
+        // nearby foes may raise a guard before the blade lands
+        if (Math.random() < (e.type === "boss" ? 0.55 : e.type === "kunoichi" ? 0.4 : 0.28) && e.defending <= 0) {
+          e.defending = 0.35;
+          e.pose = "defend";
+        }
+        hurtEnemy(e, Math.round(player.dmg * (aerial ? 1.15 : 1)), player.facing * (aerial ? 200 : 160));
       }
     });
-    addParticles(ax, player.y - 40, "#f0d9a8", 5);
+    addParticles(ax, player.y - (aerial ? 55 : 40), "#f0d9a8", aerial ? 9 : 5);
   }
 
   function tryKick() {
-    if (!player || player.kickCd > 0 || player.attacking > 0) return;
-    player.kicking = 0.28;
-    player.kickCd = 0.55;
+    if (!player || player.kickCd > 0 || player.attacking > 0 || player.defending > 0.05) return;
+    const aerial = !player.onGround;
+    player.kicking = aerial ? 0.36 : 0.3;
+    player.kickSwing = 1;
+    player.kickCd = aerial ? 0.48 : 0.55;
     player.pose = "kick";
-    player.vx += player.facing * 180;
-    const range = 48;
+    player.vx += player.facing * (aerial ? 240 : 180);
+    if (aerial) {
+      player.spin = Math.max(player.spin, 0.7);
+      player.vy = Math.min(player.vy, -80);
+    }
+    const range = aerial ? 58 : 48;
     const ax = player.x + player.facing * (player.w * 0.25 + range * 0.5);
     enemies.forEach((e) => {
       if (e.hp <= 0) return;
-      if (Math.abs(e.x - ax) < range + e.w * 0.3 && Math.abs(e.y - player.y) < 60) {
-        hurtEnemy(e, player.kickDmg, player.facing * 220);
-        e.vy = -220;
+      if (Math.abs(e.x - ax) < range + e.w * 0.3 && Math.abs(e.y - player.y) < (aerial ? 85 : 60)) {
+        if (Math.random() < 0.25 && e.defending <= 0) {
+          e.defending = 0.3;
+          e.pose = "defend";
+        }
+        hurtEnemy(e, Math.round(player.kickDmg * (aerial ? 1.2 : 1)), player.facing * (aerial ? 280 : 220));
+        e.vy = aerial ? -280 : -220;
       }
     });
-    addParticles(ax, player.y - 20, "#3ecf9a", 6);
+    addParticles(ax, player.y - (aerial ? 35 : 20), "#3ecf9a", aerial ? 10 : 6);
   }
 
   function applyPhysics(ent, dt, isPlayer) {
@@ -723,45 +806,90 @@
     if (p.kickCd > 0) p.kickCd -= dt;
     if (p.attacking > 0) p.attacking -= dt;
     if (p.kicking > 0) p.kicking -= dt;
+    if (p.defending > 0) p.defending -= dt;
     if (p.invuln > 0) p.invuln -= dt;
     if (p.hitFlash > 0) p.hitFlash -= dt;
+    if (p.slash > 0) p.slash = Math.max(0, p.slash - dt * 3.2);
+    if (p.kickSwing > 0) p.kickSwing = Math.max(0, p.kickSwing - dt * 2.8);
+    if (p.spin > 0) p.spin = Math.max(0, p.spin - dt);
+    if (p.flip > 0) p.flip = Math.max(0, p.flip - dt);
+
+    const guarding = input.defend || input.down;
+    if (guarding && p.onGround && p.attacking <= 0 && p.kicking <= 0) {
+      p.defending = 0.12;
+      p.vx *= 0.55;
+    }
 
     let move = 0;
     if (input.left) move -= 1;
     if (input.right) move += 1;
-    p.vx += (move * p.speed - p.vx) * Math.min(1, dt * 12);
-    if (move !== 0) p.facing = move > 0 ? 1 : -1;
+    const spdMul = guarding && p.onGround ? 0.35 : 1;
+    p.vx += (move * p.speed * spdMul - p.vx) * Math.min(1, dt * 12);
+    if (move !== 0 && !guarding) p.facing = move > 0 ? 1 : -1;
 
     if (p.hitFlash > 0.05) p.pose = "hurt";
+    else if (p.defending > 0.05 || guarding) p.pose = "defend";
     else if (p.attacking > 0) p.pose = "attack";
     else if (p.kicking > 0) p.pose = "kick";
-    else if (!p.onGround) p.pose = "jump";
+    else if (!p.onGround) p.pose = p.flip > 0 || p.spin > 0 ? "flip" : "jump";
     else if (moving) p.pose = "run";
     else p.pose = "idle";
 
-    if (input.jumpPressed && p.onGround) {
+    if (input.jumpPressed && p.onGround && !guarding) {
       p.vy = -p.jump;
       p.onGround = false;
+      p.flip = 0.55;
+      p.spin = 0.55;
     }
     input.jumpPressed = false;
-    if (input.attackPressed) tryKatana();
+    if (!guarding) {
+      if (input.attackPressed) tryKatana();
+      if (input.kickPressed) tryKick();
+    }
     input.attackPressed = false;
-    if (input.kickPressed) tryKick();
     input.kickPressed = false;
 
+    const wasAir = !p.onGround;
     applyPhysics(p, dt, true);
+    if (wasAir && p.onGround) {
+      p.flip = 0;
+      if (p.spin > 0.05) p.spin = 0.05;
+    }
   }
 
   function updateEnemies(dt) {
     enemies.forEach((e) => {
       if (e.hp <= 0) return;
-      e.anim += dt * 7;
+      e.anim += dt * (e.pose === "run" ? 9 : 5);
       if (e.hitFlash > 0) e.hitFlash -= dt;
       if (e.attackCd > 0) e.attackCd -= dt;
+      if (e.defending > 0) e.defending -= dt;
+      if (e.defendCd > 0) e.defendCd -= dt;
+      if (e.hopCd > 0) e.hopCd -= dt;
+      if (e.swing > 0) e.swing = Math.max(0, e.swing - dt * 2.5);
 
-      if (e.attackWind > 0) {
+      const dx = player.x - e.x;
+      const dist = Math.abs(dx);
+      e.facing = dx >= 0 ? 1 : -1;
+      const playerThreatening =
+        (player.attacking > 0 || player.kicking > 0 || player.slash > 0.2 || player.kickSwing > 0.2) &&
+        dist < 110 &&
+        Math.abs(player.y - e.y) < 90;
+
+      if (playerThreatening && e.defendCd <= 0 && e.attackWind <= 0 && Math.random() < 0.65) {
+        e.defending = e.type === "boss" ? 0.55 : e.type === "oni" ? 0.4 : 0.32;
+        e.defendCd = e.type === "kunoichi" ? 0.7 : 1.05;
+        e.pose = "defend";
+        e.vx *= 0.3;
+      }
+
+      if (e.defending > 0) {
+        e.pose = "defend";
+        e.vx *= 0.75;
+      } else if (e.attackWind > 0) {
         e.attackWind -= dt;
         e.pose = "attack";
+        e.swing = Math.max(e.swing, 0.8);
         if (e.attackWind <= 0) {
           const reach = e.type === "boss" ? 80 : e.type === "oni" ? 55 : 45;
           if (Math.abs(e.x - player.x) < reach && Math.abs(e.y - player.y) < 70) {
@@ -770,17 +898,32 @@
           e.attackCd = e.type === "kunoichi" ? 0.7 : e.type === "oni" ? 1.2 : 0.95;
         }
       } else {
-        // approach from the front (right → left toward hero)
-        const dx = player.x - e.x;
-        e.facing = dx >= 0 ? 1 : -1;
-        const dist = Math.abs(dx);
         const stop = e.type === "boss" ? 60 : e.type === "oni" ? 48 : 38;
-        if (dist > stop) {
-          e.vx += (e.facing * e.speed - e.vx) * Math.min(1, dt * 8);
+        if (dist > stop + 18) {
+          // paced approach with occasional hop
+          const pace = 0.85 + Math.sin(e.anim * 0.7) * 0.15;
+          e.vx += (e.facing * e.speed * pace - e.vx) * Math.min(1, dt * 7);
           e.pose = "run";
+          if (e.onGround && e.hopCd <= 0 && Math.random() < 0.012) {
+            e.vy = e.type === "kunoichi" ? -320 : -220;
+            e.onGround = false;
+            e.hopCd = 1.2 + Math.random();
+            e.pose = "jump";
+          }
+        } else if (dist > stop) {
+          e.vx += (e.facing * e.speed * 0.45 - e.vx) * Math.min(1, dt * 6);
+          e.pose = "idle";
+          if (e.attackCd <= 0) {
+            e.attackWind = e.type === "kunoichi" ? 0.16 : 0.26;
+            e.swing = 1;
+          }
         } else {
-          e.vx *= 0.8;
-          if (e.attackCd <= 0) e.attackWind = e.type === "kunoichi" ? 0.18 : 0.28;
+          e.vx *= 0.78;
+          e.pose = Math.sin(e.anim) > 0 ? "idle" : "guard";
+          if (e.attackCd <= 0) {
+            e.attackWind = e.type === "kunoichi" ? 0.18 : 0.28;
+            e.swing = 1;
+          }
         }
       }
       applyPhysics(e, dt, false);
@@ -857,7 +1000,7 @@
 
     if (!enemies.some((e) => e.hp > 0) && spawnQueue.length === 0) {
       clearTimer += dt;
-      if (clearTimer > 0.9) levelWon();
+      if (clearTimer > 0.55) levelWon();
     }
     updateHud();
   }
@@ -909,10 +1052,48 @@
   function drawActor(ent, spriteKey, isPlayer) {
     const spr = img[spriteKey] || img.hero;
     const sx = ent.x - cameraX;
-    const bob = ent.pose === "idle" ? Math.sin(ent.anim) * 1.5 : ent.pose === "run" ? Math.abs(Math.sin(ent.anim)) * 2 : 0;
+    const bob =
+      ent.pose === "idle" || ent.pose === "guard"
+        ? Math.sin(ent.anim) * 1.5
+        : ent.pose === "run"
+          ? Math.abs(Math.sin(ent.anim)) * 3
+          : 0;
     ctx.save();
     ctx.translate(sx, ent.y + bob);
+
+    // somersault / air spin
+    let rot = 0;
+    if (isPlayer) {
+      if (ent.flip > 0 || ent.spin > 0) {
+        const t = Math.max(ent.flip, ent.spin);
+        rot = -ent.facing * (1 - t / 0.7) * Math.PI * 2;
+      }
+      if (ent.attacking > 0 && !ent.onGround) rot += -ent.facing * (1 - ent.attacking / 0.35) * 0.8;
+      if (ent.kicking > 0 && !ent.onGround) rot += -ent.facing * 0.9;
+    } else if (!ent.onGround) {
+      rot = Math.sin(ent.anim * 2) * 0.25;
+    }
+    ctx.rotate(rot);
     ctx.scale(ent.facing, 1);
+
+    // lean / squash for motion
+    let sxScale = 1;
+    let syScale = 1;
+    if (ent.pose === "run") {
+      sxScale = 1 + Math.sin(ent.anim * 2) * 0.04;
+      syScale = 1 - Math.sin(ent.anim * 2) * 0.04;
+    } else if (ent.pose === "defend" || ent.pose === "guard") {
+      sxScale = 0.92;
+      syScale = 1.04;
+    } else if (ent.pose === "attack") {
+      sxScale = 1.08;
+      syScale = 0.94;
+    } else if (ent.pose === "kick") {
+      sxScale = 1.12;
+      syScale = 0.9;
+    }
+    ctx.scale(sxScale, syScale);
+
     if (ent.hitFlash > 0) ctx.globalAlpha = 0.55 + Math.sin(time * 45) * 0.3;
     if (isPlayer && ent.invuln > 0 && Math.floor(time * 18) % 2 === 0) ctx.globalAlpha = 0.4;
 
@@ -924,27 +1105,62 @@
     const drawH = ent.h;
     if (spr) {
       const drawW = (spr.width / spr.height) * drawH;
-      // soft contact shadow + crisp sprite
       ctx.drawImage(spr, -drawW * 0.5, -drawH, drawW, drawH);
     } else {
       ctx.fillStyle = isPlayer ? "#3a4650" : "#6a3a28";
       ctx.fillRect(-ent.w * 0.3, -ent.h, ent.w * 0.6, ent.h);
     }
 
-    if (isPlayer && ent.attacking > 0) {
-      ctx.strokeStyle = "rgba(232,168,74,0.9)";
+    // realistic katana arc
+    const slash = isPlayer ? ent.slash || 0 : ent.swing || 0;
+    if ((isPlayer && ent.attacking > 0) || (!isPlayer && ent.pose === "attack" && slash > 0)) {
+      const t = isPlayer ? 1 - Math.min(1, ent.attacking / 0.32) : 1 - slash;
+      ctx.strokeStyle = isPlayer ? "rgba(232,168,74,0.95)" : "rgba(255,120,90,0.85)";
+      ctx.lineWidth = isPlayer ? 4 : 3;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      const a0 = -1.4 + t * 0.2;
+      const a1 = a0 + 2.2 * Math.min(1, t + 0.35);
+      ctx.arc(ent.w * 0.05, -ent.h * 0.48, isPlayer ? 38 : 32, a0, a1);
+      ctx.stroke();
+      // blade tip flash
+      ctx.fillStyle = "rgba(255,240,200,0.85)";
+      const tipX = Math.cos(a1) * 38;
+      const tipY = -ent.h * 0.48 + Math.sin(a1) * 38;
+      ctx.beginPath();
+      ctx.arc(tipX, tipY, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // realistic kick extension
+    if ((isPlayer && ent.kicking > 0) || (!isPlayer && ent.pose === "kick")) {
+      const t = isPlayer ? 1 - Math.min(1, ent.kicking / 0.36) : 0.7;
+      ctx.strokeStyle = "rgba(62,207,154,0.9)";
+      ctx.lineWidth = 5;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(0, -ent.h * 0.28);
+      ctx.quadraticCurveTo(ent.w * 0.15, -ent.h * (0.1 - t * 0.05), ent.w * (0.35 + t * 0.35), -ent.h * (0.18 - t * 0.12));
+      ctx.stroke();
+      ctx.fillStyle = "rgba(180,255,220,0.8)";
+      ctx.beginPath();
+      ctx.arc(ent.w * (0.35 + t * 0.35), -ent.h * (0.18 - t * 0.12), 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // guard / shield silhouette
+    if (ent.pose === "defend" || ent.pose === "guard" || (isPlayer && ent.defending > 0)) {
+      ctx.strokeStyle = "rgba(168,200,240,0.85)";
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.arc(ent.w * 0.1, -ent.h * 0.45, 34, -1.1, 0.9);
+      ctx.arc(ent.w * 0.12, -ent.h * 0.45, 22, -0.9, 0.9);
       ctx.stroke();
-    }
-    if (isPlayer && ent.kicking > 0) {
-      ctx.strokeStyle = "rgba(62,207,154,0.85)";
-      ctx.lineWidth = 3;
+      ctx.fillStyle = "rgba(168,200,240,0.18)";
       ctx.beginPath();
-      ctx.arc(ent.w * 0.15, -ent.h * 0.2, 28, -0.2, 1.2);
-      ctx.stroke();
+      ctx.arc(ent.w * 0.12, -ent.h * 0.45, 20, -0.9, 0.9);
+      ctx.fill();
     }
+
     ctx.restore();
 
     if (!isPlayer && ent.hp < ent.maxHp) {
@@ -1016,6 +1232,8 @@
       const set = (v) => {
         if (act === "left") input.left = v;
         if (act === "right") input.right = v;
+        if (act === "down") input.down = v;
+        if (act === "defend") input.defend = v;
         if (act === "jump") {
           if (v && !input.jump) input.jumpPressed = true;
           input.jump = v;
@@ -1045,6 +1263,8 @@
       if (e.repeat) return;
       if (e.code === "ArrowLeft" || e.code === "KeyQ") input.left = true;
       if (e.code === "ArrowRight" || e.code === "KeyD") input.right = true;
+      if (e.code === "ArrowDown" || e.code === "KeyS") input.down = true;
+      if (e.code === "KeyL" || e.code === "ShiftLeft" || e.code === "ShiftRight") input.defend = true;
       if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyZ") {
         input.jump = true;
         input.jumpPressed = true;
@@ -1052,6 +1272,9 @@
       }
       if (e.code === "KeyJ" || e.code === "KeyA") input.attackPressed = true;
       if (e.code === "KeyK" || e.code === "KeyE") input.kickPressed = true;
+      if (e.code === "KeyN" && (state === "play" || state === "pause")) {
+        skipToNextLevel();
+      }
       if (e.code === "Escape" && state === "play") {
         state = "pause";
         showScreen("pause");
@@ -1060,6 +1283,8 @@
     window.addEventListener("keyup", (e) => {
       if (e.code === "ArrowLeft" || e.code === "KeyQ") input.left = false;
       if (e.code === "ArrowRight" || e.code === "KeyD") input.right = false;
+      if (e.code === "ArrowDown" || e.code === "KeyS") input.down = false;
+      if (e.code === "KeyL" || e.code === "ShiftLeft" || e.code === "ShiftRight") input.defend = false;
       if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyZ") input.jump = false;
     });
   }
@@ -1072,6 +1297,12 @@
     };
     $("btn-continue").onclick = () => openShop();
     $("btn-next-level").onclick = () => startLevel();
+    const skip = $("btn-skip-level");
+    if (skip) skip.onclick = () => skipToNextLevel();
+    const nextAfter = $("btn-next-after");
+    if (nextAfter) nextAfter.onclick = () => startLevel();
+    const pauseNext = $("btn-pause-next");
+    if (pauseNext) pauseNext.onclick = () => skipToNextLevel();
     $("btn-menu-from-shop").onclick = () => {
       state = "menu";
       showScreen("menu");

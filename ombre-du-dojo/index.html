@@ -31,20 +31,28 @@
       <div class="hud-right">
         <div class="gold-row">◆ <span id="gold-hud">0</span></div>
         <div id="weapon-chip" class="weapon-chip">Katana</div>
+        <button type="button" id="btn-skip-level" class="hud-next" aria-label="Niveau suivant">Niveau suivant ▶</button>
       </div>
     </div>
 
     <div id="controls" class="hidden">
+      <!-- Croix directionnelle style PlayStation -->
       <div class="ctrl-cluster left">
-        <button type="button" class="ctrl" data-act="left" aria-label="Gauche">◀</button>
-        <button type="button" class="ctrl" data-act="right" aria-label="Droite">▶</button>
-      </div>
-      <div class="ctrl-cluster right">
-        <div class="ctrl-stack">
-          <button type="button" class="ctrl jump" data-act="jump" aria-label="Sauter">↑</button>
-          <button type="button" class="ctrl kick" data-act="kick" aria-label="Coup de pied">🦵</button>
+        <div class="dpad" aria-label="Croix directionnelle">
+          <button type="button" class="ctrl dpad-btn up" data-act="jump" aria-label="Haut / Saut">▲</button>
+          <button type="button" class="ctrl dpad-btn left" data-act="left" aria-label="Gauche">◀</button>
+          <button type="button" class="ctrl dpad-btn right" data-act="right" aria-label="Droite">▶</button>
+          <button type="button" class="ctrl dpad-btn down" data-act="down" aria-label="Bas / Accroupir">▼</button>
         </div>
-        <button type="button" class="ctrl attack" data-act="attack" aria-label="Katana">⚔</button>
+      </div>
+      <!-- Boutons action style PlayStation (losange) -->
+      <div class="ctrl-cluster right">
+        <div class="face-pad" aria-label="Boutons action">
+          <button type="button" class="ctrl face jump" data-act="jump" aria-label="Saut / Flip">△</button>
+          <button type="button" class="ctrl face kick" data-act="kick" aria-label="Coup de pied">○</button>
+          <button type="button" class="ctrl face attack" data-act="attack" aria-label="Katana">□</button>
+          <button type="button" class="ctrl face defend" data-act="defend" aria-label="Défense">✕</button>
+        </div>
       </div>
     </div>
 
@@ -52,12 +60,12 @@
       <div class="menu-glow"></div>
       <p class="eyebrow">JEUX ÉMILE</p>
       <h1>Ombre du Dojo</h1>
-      <p class="tagline">Shinobi vue de côté — plateformes, katana, coups de pied, tenues et armes.</p>
+      <p class="tagline">Shinobi vue de côté — flip, katana, coups de pied, défense et ennemis réactifs.</p>
       <div class="menu-actions">
         <button type="button" id="btn-play" class="btn primary">Jouer</button>
         <button type="button" id="btn-continue" class="btn ghost hidden">Continuer</button>
       </div>
-      <p class="hint">◀▶ · ↑ saut · ⚔ katana · 🦵 pied · Clavier : Q D · Espace · J · K</p>
+      <p class="hint">Croix ▲▼◀▶ · △ saut · □ katana · ○ pied · ✕ défense · Clavier : flèches · J · K · L · Espace</p>
     </section>
 
     <section id="screen-shop" class="screen hidden">
@@ -80,6 +88,7 @@
       <h2>Pause</h2>
       <div class="menu-actions">
         <button type="button" id="btn-resume" class="btn primary">Reprendre</button>
+        <button type="button" id="btn-pause-next" class="btn primary">Niveau suivant</button>
         <button type="button" id="btn-quit" class="btn ghost">Abandonner</button>
       </div>
     </section>
@@ -88,7 +97,8 @@
       <h2 id="over-title">Défaite</h2>
       <p id="over-msg" class="tagline"></p>
       <div class="menu-actions">
-        <button type="button" id="btn-retry" class="btn primary">Réessayer</button>
+        <button type="button" id="btn-next-after" class="btn primary">Niveau suivant</button>
+        <button type="button" id="btn-retry" class="btn ghost">Réessayer</button>
         <button type="button" id="btn-shop-after" class="btn ghost">Boutique</button>
         <button type="button" id="btn-menu-over" class="btn ghost">Menu</button>
       </div>
