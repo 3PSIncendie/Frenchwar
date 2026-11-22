@@ -571,33 +571,60 @@
   function isBossLevel(lv) {
     return lv > 0 && lv % 5 === 0;
   }
-  function enemyScale(lv) {
-    if (lv <= 3) return 0.75 + (lv - 1) * 0.08;
-    return 1 + (lv - 4) * 0.09;
+
+  /** Progressive enemy rank tied to stage (and optional within-wave bump). */
+  function enemyRank(stageLv, waveIndex) {
+    const base = Math.max(1, stageLv | 0);
+    const wave = Math.max(0, waveIndex | 0);
+    return base + Math.floor(wave / 3);
+  }
+
+  /** Smooth power curve: gentle early, steady climb later. */
+  function enemyScale(rank) {
+    const r = Math.max(1, rank);
+    return 0.68 + (r - 1) * 0.11 + Math.pow(r - 1, 1.2) * 0.012;
+  }
+
+  function pickEnemyType(lv, waveIndex) {
+    const progress = Math.min(1, (lv - 1) / 12);
+    const late = Math.min(0.25, waveIndex * 0.04);
+    const roll = Math.random();
+    // Unlock / weight tougher types as stages rise
+    const oniChance = lv >= 3 ? 0.08 + progress * 0.28 + late : 0;
+    const kunoChance = lv >= 2 ? 0.2 + progress * 0.25 + late * 0.5 : 0;
+    if (roll < oniChance) return "oni";
+    if (roll < oniChance + kunoChance) return "kunoichi";
+    return "bandit";
   }
 
   function buildSpawnQueue(lv) {
     const q = [];
     if (isBossLevel(lv)) {
-      q.push({ type: "bandit", delay: 0.6 });
-      q.push({ type: "oni", delay: 0.9 });
-      q.push({ type: "boss", delay: 1.5 });
+      const escorts = 1 + Math.floor(lv / 10);
+      for (let i = 0; i < escorts; i++) {
+        q.push({ type: pickEnemyType(lv, i), delay: 0.45 + i * 0.35, wave: i });
+      }
+      q.push({ type: lv >= 15 ? "oni" : "bandit", delay: 0.7, wave: escorts });
+      q.push({ type: "boss", delay: 1.35, wave: escorts + 1 });
       return q;
     }
-    const n = lv <= 2 ? 3 : lv <= 4 ? 4 : 4 + Math.floor((lv - 4) * 0.55);
+    // Count climbs every stage, soft cap to avoid overwhelm
+    const n = Math.min(14, 3 + Math.floor((lv - 1) * 0.7) + (lv >= 8 ? 1 : 0));
+    const spacing = Math.max(0.38, 0.85 - lv * 0.025);
     for (let i = 0; i < n; i++) {
-      let type = "bandit";
-      const roll = Math.random();
-      if (lv >= 2 && roll > 0.55) type = "kunoichi";
-      if (lv >= 4 && roll > 0.78) type = "oni";
-      q.push({ type, delay: 0.7 + i * 0.75 });
+      q.push({ type: pickEnemyType(lv, i), delay: 0.55 + i * spacing, wave: i });
+    }
+    // Mid/late stages: occasional elite pack finale
+    if (lv >= 6 && Math.random() < 0.45 + Math.min(0.4, lv * 0.03)) {
+      q.push({ type: lv >= 8 ? "oni" : "kunoichi", delay: 0.9, wave: n });
     }
     return q;
   }
 
-  function spawnEnemy(type) {
+  function spawnEnemy(type, waveIndex) {
     const lv = save.level;
-    const sc = enemyScale(lv);
+    const rank = enemyRank(lv, waveIndex);
+    const sc = enemyScale(rank);
     // Always arrive in front of the hero (to their right), never from behind.
     const heroX = player ? player.x : 160;
     const frontMin = heroX + 240;
@@ -611,27 +638,34 @@
       boss: { w: 100, h: 150, hp: 220, dmg: 18, speed: 105, gold: 100, sprite: "boss" },
     };
     const d = defs[type] || defs.bandit;
-    const bossMult = type === "boss" ? 1 + Math.floor(lv / 5) * 0.2 : 1;
+    const bossMult = type === "boss" ? 1 + Math.floor(lv / 5) * 0.28 : 1;
+    const elite = type !== "boss" && rank >= 6 && Math.random() < Math.min(0.35, 0.08 + rank * 0.02);
+    const eliteMult = elite ? 1.28 : 1;
+    const hp = Math.round(d.hp * sc * bossMult * eliteMult);
+    const dmg = Math.round(d.dmg * (0.9 + sc * 0.55) * bossMult * (elite ? 1.15 : 1));
+    const speed = d.speed + rank * 4.5 + (elite ? 18 : 0);
     enemies.push({
       type,
       sprite: d.sprite,
+      rank,
+      elite: !!elite,
       x,
       y: gy,
-      w: d.w,
-      h: d.h,
+      w: d.w * (elite ? 1.06 : 1),
+      h: d.h * (elite ? 1.06 : 1),
       vx: 0,
       vy: 0,
-      hp: Math.round(d.hp * sc * bossMult),
-      maxHp: Math.round(d.hp * sc * bossMult),
-      dmg: Math.round(d.dmg * sc * bossMult),
-      speed: d.speed + lv * 3,
-      gold: d.gold + lv * 2,
+      hp,
+      maxHp: hp,
+      dmg,
+      speed,
+      gold: d.gold + rank * 2 + (elite ? 8 : 0),
       facing: -1,
-      attackCd: 0.5,
+      attackCd: Math.max(0.18, 0.55 - rank * 0.018),
       attackWind: 0,
       defending: 0,
-      defendCd: 0.2 + Math.random() * 0.4,
-      hopCd: 0.6 + Math.random(),
+      defendCd: Math.max(0.15, 0.45 - rank * 0.012) + Math.random() * 0.25,
+      hopCd: Math.max(0.35, 0.8 - rank * 0.02) + Math.random() * 0.5,
       hitFlash: 0,
       anim: Math.random() * 8,
       swing: 0,
@@ -640,6 +674,7 @@
       lean: 0,
       squash: 0,
       windup: 0,
+      aggression: Math.min(1.35, 0.85 + rank * 0.035),
       pose: "run",
     });
     if (type === "boss") cycleDecor(true);
@@ -691,7 +726,12 @@
     if (hpBar) hpBar.style.transform = `scaleX(${Math.max(0, player.hp / player.maxHp)})`;
     if (hpText) hpText.textContent = `${Math.ceil(player.hp)}`;
     if (gold) gold.textContent = `${save.gold}`;
-    if (level) level.textContent = isBossLevel(save.level) ? `Boss ${save.level}` : `Niv. ${save.level}`;
+    if (level) {
+      const threat = enemyRank(save.level, 0);
+      level.textContent = isBossLevel(save.level)
+        ? `Boss ${save.level} · Menace ${threat}`
+        : `Niv. ${save.level} · Menace ${threat}`;
+    }
     if (wave) wave.textContent = `${enemies.filter((e) => e.hp > 0).length + spawnQueue.length}`;
     if (weapon) {
       const w = weaponStats();
@@ -1350,29 +1390,32 @@
           if (Math.abs(e.x - player.x) < reach && Math.abs(e.y - player.y) < 70) {
             hurtPlayer(e.dmg, e.x);
           }
-          e.attackCd = e.type === "kunoichi" ? 0.7 : e.type === "oni" ? 1.2 : 0.95;
+          const cdBase = e.type === "kunoichi" ? 0.7 : e.type === "oni" ? 1.2 : 0.95;
+          e.attackCd = Math.max(0.28, cdBase / (e.aggression || 1));
         }
       } else {
-        const stop = e.type === "boss" ? 60 : e.type === "oni" ? 48 : 38;
+        const aggr = e.aggression || 1;
+        const stop = (e.type === "boss" ? 60 : e.type === "oni" ? 48 : 38) / Math.min(1.25, aggr);
         if (dist > stop + 40) {
           // approach with slight speed pulse (natural stride)
           const pulse = 0.88 + Math.sin((e.gait || e.anim) * 0.5) * 0.12;
-          wantVx = e.facing * e.speed * pulse * weight;
+          wantVx = e.facing * e.speed * pulse * weight * Math.min(1.2, aggr);
           e.pose = "run";
-          if (e.onGround && e.hopCd <= 0 && dist > 160 && Math.random() < 0.008 * weight) {
+          if (e.onGround && e.hopCd <= 0 && dist > 160 && Math.random() < 0.008 * weight * aggr) {
             e.vy = e.type === "kunoichi" ? -300 : e.type === "oni" ? -180 : -230;
             e.onGround = false;
-            e.hopCd = 1.4 + Math.random();
+            e.hopCd = Math.max(0.55, 1.4 / aggr) + Math.random();
             e.pose = "jump";
             e.squash = -0.1;
           }
         } else if (dist > stop) {
-          // slow close-in + brief windup pause
-          wantVx = e.facing * e.speed * 0.35;
+          // slow close-in + brief windup pause (higher ranks wind up faster)
+          wantVx = e.facing * e.speed * 0.35 * aggr;
           e.pose = "idle";
           e.windup += dt;
-          if (e.attackCd <= 0 && e.windup > 0.18) {
-            e.attackWind = e.type === "kunoichi" ? 0.16 : 0.28;
+          const windNeed = Math.max(0.08, 0.2 / aggr);
+          if (e.attackCd <= 0 && e.windup > windNeed) {
+            e.attackWind = Math.max(0.1, (e.type === "kunoichi" ? 0.16 : 0.28) / aggr);
             e.swing = 1;
             e.windup = 0;
             e.squash = 0.12;
@@ -1381,8 +1424,8 @@
           wantVx = 0;
           e.pose = Math.sin(e.anim) > 0.3 ? "guard" : "idle";
           e.windup += dt;
-          if (e.attackCd <= 0 && e.windup > 0.12) {
-            e.attackWind = e.type === "kunoichi" ? 0.18 : 0.3;
+          if (e.attackCd <= 0 && e.windup > Math.max(0.06, 0.14 / aggr)) {
+            e.attackWind = Math.max(0.1, (e.type === "kunoichi" ? 0.18 : 0.3) / aggr);
             e.swing = 1;
             e.windup = 0;
           }
@@ -1452,7 +1495,7 @@
       spawnTimer -= dt;
       if (spawnTimer <= 0) {
         const next = spawnQueue.shift();
-        spawnEnemy(next.type);
+        spawnEnemy(next.type, next.wave != null ? next.wave : 0);
         spawnTimer = next.delay || 0.6;
       }
     }
@@ -1752,13 +1795,25 @@
       ctx.fill();
     }
 
+    if (!isPlayer && ent.elite) {
+      ctx.strokeStyle = "rgba(232,168,74,0.55)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(-ent.w * 0.28, -ent.h * 0.98, ent.w * 0.56, ent.h * 0.96);
+    }
+
     ctx.restore();
 
-    if (!isPlayer && ent.hp < ent.maxHp) {
-      ctx.fillStyle = "rgba(0,0,0,0.5)";
-      ctx.fillRect(sx - 24, ent.y - ent.h - 14, 48, 5);
-      ctx.fillStyle = ent.type === "boss" ? "#e8a84a" : "#c23b3b";
-      ctx.fillRect(sx - 24, ent.y - ent.h - 14, 48 * Math.max(0, ent.hp / ent.maxHp), 5);
+    if (!isPlayer) {
+      const barY = ent.y - ent.h - 18;
+      ctx.fillStyle = "rgba(0,0,0,0.55)";
+      ctx.fillRect(sx - 26, barY, 52, 5);
+      ctx.fillStyle = ent.type === "boss" ? "#e8a84a" : ent.elite ? "#f0b85a" : "#c23b3b";
+      ctx.fillRect(sx - 26, barY, 52 * Math.max(0, ent.hp / ent.maxHp), 5);
+      ctx.fillStyle = ent.elite ? "#f0b85a" : "#d8cfc0";
+      ctx.font = "600 11px Teko, Impact, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(`Nv.${ent.rank || 1}${ent.elite ? " ★" : ""}`, sx, barY - 3);
+      ctx.textAlign = "left";
     }
   }
 
