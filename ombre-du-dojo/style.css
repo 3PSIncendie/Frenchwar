@@ -144,30 +144,31 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 }
 .ctrl-cluster { display: flex; gap: 10px; align-items: flex-end; pointer-events: auto; }
 
-/* Croix directionnelle PlayStation */
-.dpad {
-  position: relative; width: 168px; height: 168px;
+/* Pad déplacement : gauche / droite uniquement */
+.move-pad {
+  display: flex; gap: 10px; align-items: center;
   filter: drop-shadow(0 6px 12px rgba(0,0,0,.45));
+  margin-bottom: 8px;
 }
-.dpad-btn {
-  position: absolute; width: 54px; height: 54px; border-radius: 10px;
+.move-btn {
+  width: 64px; height: 64px; border-radius: 14px;
   border: 2px solid rgba(200,210,220,.35); background: rgba(12,20,28,.82);
-  color: var(--paper); font-size: 1.05rem; cursor: pointer;
+  color: var(--paper); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; padding: 0;
 }
-.dpad-btn.up { left: 57px; top: 0; }
-.dpad-btn.down { left: 57px; bottom: 0; }
-.dpad-btn.left { left: 0; top: 57px; }
-.dpad-btn.right { right: 0; top: 57px; }
+.move-btn svg { width: 28px; height: 28px; pointer-events: none; }
 
 .ctrl-cluster.right { align-items: flex-end; gap: 8px; }
 .throw-btn {
   width: 54px; height: 54px; border-radius: 50%; margin-bottom: 56px;
   border: 2px solid rgba(200,210,230,.55) !important;
   background: rgba(40,48,64,.85) !important;
-  color: #e8ecf4 !important; font-size: 1.35rem !important;
+  color: #e8ecf4 !important;
+  display: inline-flex !important; align-items: center; justify-content: center; padding: 0 !important;
 }
+.throw-btn svg { width: 28px; height: 28px; pointer-events: none; }
 
-/* Boutons face PlayStation (losange) */
+/* Actions : saut / katana / jambe / bouclier */
 .face-pad {
   position: relative; width: 168px; height: 168px;
   filter: drop-shadow(0 6px 12px rgba(0,0,0,.45));
@@ -175,12 +176,14 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 .face {
   position: absolute; width: 56px; height: 56px; border-radius: 50%;
   border: 2px solid rgba(232,168,74,.4); background: rgba(8,18,24,.8);
-  color: var(--paper); font-size: 1.25rem; font-weight: 700; cursor: pointer;
+  color: var(--paper); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; padding: 0;
 }
+.face svg { width: 26px; height: 26px; pointer-events: none; }
 .face.jump { left: 56px; top: 0; color: #7ad4a8; border-color: rgba(122,212,168,.55); }
 .face.kick { right: 0; top: 56px; color: #f0a0a8; border-color: rgba(240,160,168,.55); }
-.face.attack { left: 0; top: 56px; color: #a8c8f0; border-color: rgba(168,200,240,.55); }
-.face.defend { left: 56px; bottom: 0; color: #d0d0d8; border-color: rgba(200,200,210,.45); }
+.face.attack { left: 0; top: 56px; color: #e8a84a; border-color: rgba(232,168,74,.6); }
+.face.defend { left: 56px; bottom: 0; color: #a8c8f0; border-color: rgba(168,200,240,.5); }
 
 .ctrl:active,.ctrl.active { background: rgba(232,168,74,.32) !important; transform: scale(.93); }
 
@@ -221,13 +224,14 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 
 @media (orientation: landscape) and (max-height: 500px) {
   h1 { font-size: 2.4rem; }
-  .dpad, .face-pad { width: 132px; height: 132px; }
-  .dpad-btn { width: 42px; height: 42px; font-size: .9rem; }
-  .dpad-btn.up, .dpad-btn.down { left: 45px; }
-  .dpad-btn.left, .dpad-btn.right { top: 45px; }
-  .face { width: 44px; height: 44px; font-size: 1rem; }
+  .move-btn { width: 52px; height: 52px; }
+  .move-btn svg { width: 22px; height: 22px; }
+  .face-pad { width: 132px; height: 132px; }
+  .face { width: 44px; height: 44px; }
+  .face svg { width: 22px; height: 22px; }
   .face.jump, .face.defend { left: 44px; }
   .face.attack, .face.kick { top: 44px; }
-  .throw-btn { width: 44px; height: 44px; margin-bottom: 44px; font-size: 1.1rem !important; }
+  .throw-btn { width: 44px; height: 44px; margin-bottom: 44px; }
+  .throw-btn svg { width: 22px; height: 22px; }
   .shop-list { max-height: 32vh; }
 }

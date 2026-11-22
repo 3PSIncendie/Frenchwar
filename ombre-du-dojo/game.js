@@ -139,7 +139,7 @@
     {
       id: "shuriken",
       name: "Shuriken",
-      desc: "Arme secondaire — ★ / U · en plus de la mêlée",
+      desc: "Arme secondaire — shuriken / U · en plus de la mêlée",
       cost: 0,
       dmg: 2,
       range: 40,
@@ -703,7 +703,7 @@
     if (shCount) shCount.textContent = String(ammo);
     if (shHud) {
       shHud.classList.toggle("empty", ammo <= 0);
-      shHud.innerHTML = `★ <span id="shuriken-count">${ammo}</span>/${SHURIKEN_MAX}`;
+      shHud.innerHTML = `手裏 <span id="shuriken-count">${ammo}</span>/${SHURIKEN_MAX}`;
     }
   }
 
@@ -1245,7 +1245,7 @@
       if (p.flipAngle >= Math.PI * 2.05) p.flipping = false;
     }
 
-    const guarding = input.defend || input.down;
+    const guarding = input.defend;
     if (guarding && p.onGround && p.attacking <= 0 && p.kicking <= 0) {
       p.defending = 0.12;
     }
@@ -1824,7 +1824,6 @@
       const set = (v) => {
         if (act === "left") input.left = v;
         if (act === "right") input.right = v;
-        if (act === "down") input.down = v;
         if (act === "defend") input.defend = v;
         if (act === "jump") {
           if (v && !input.jump) input.jumpPressed = true;
@@ -1859,7 +1858,6 @@
       if (e.repeat) return;
       if (e.code === "ArrowLeft" || e.code === "KeyQ") input.left = true;
       if (e.code === "ArrowRight" || e.code === "KeyD") input.right = true;
-      if (e.code === "ArrowDown" || e.code === "KeyS") input.down = true;
       if (e.code === "KeyL" || e.code === "ShiftLeft" || e.code === "ShiftRight") input.defend = true;
       if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyZ") {
         input.jump = true;
@@ -1884,7 +1882,6 @@
     window.addEventListener("keyup", (e) => {
       if (e.code === "ArrowLeft" || e.code === "KeyQ") input.left = false;
       if (e.code === "ArrowRight" || e.code === "KeyD") input.right = false;
-      if (e.code === "ArrowDown" || e.code === "KeyS") input.down = false;
       if (e.code === "KeyL" || e.code === "ShiftLeft" || e.code === "ShiftRight") input.defend = false;
       if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyZ") input.jump = false;
     });
