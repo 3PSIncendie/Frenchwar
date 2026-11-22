@@ -499,6 +499,8 @@
     if (hud) hud.classList.toggle("hidden", !playing);
     if (controls) controls.classList.toggle("hidden", !playing);
     if (pause) pause.classList.toggle("hidden", !playing);
+    // Keep canvas out of the hit-test path so menu/buttons always receive clicks
+    if (canvas) canvas.style.pointerEvents = "none";
   }
 
   function updateContinueBtn() {
