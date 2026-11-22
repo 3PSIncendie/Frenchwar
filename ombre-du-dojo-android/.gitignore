@@ -1,0 +1,21 @@
+.gradle/
+build/
+app/build/
+capacitor-cordova-android-plugins/build/
+local.properties
+# Release signing — never commit
+keystore.properties
+/keystore/
+*.jks
+*.keystore
+*.log
+.DS_Store
+*.iml
+.idea/
+.externalNativeBuild
+.cxx/
+captures/
+.DS_Store
+app/src/main/assets/public/
+app/src/main/assets/capacitor.config.json
+app/src/main/assets/capacitor.plugins.json

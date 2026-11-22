@@ -14,12 +14,14 @@ Après installation : tiroir d’apps → **Ombre** → ajouter au bureau si bes
 
 À **chaque ouverture**, l’APK recharge la version live (`https://ombre-du-dojo.apps.grok.bot`).
 
+Le projet Android Capacitor est hors du dossier web (non publié) : `../ombre-du-dojo-android/`.
+
 Reconstruire l’APK release (SDK Android requis) :
 
 ```bash
-cp android/keystore.properties.example android/keystore.properties
+cp ../ombre-du-dojo-android/keystore.properties.example ../ombre-du-dojo-android/keystore.properties
 # remplir storePassword / keyPassword localement (jamais committer)
-# placer le .jks dans android/keystore/ (gitignoré)
+# placer le .jks dans ../ombre-du-dojo-android/keystore/ (gitignoré)
 npm install
 npm run apk
 ```

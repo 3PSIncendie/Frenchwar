@@ -5,8 +5,8 @@
   "main": "game.js",
   "scripts": {
     "sync:www": "rm -rf www && mkdir -p www && cp index.html style.css game.js boot.js manifest.webmanifest telecharger.html telecharger.css telecharger-boot.js icon.svg version.json sw.js www/ && cp -a assets www/",
-    "sync": "npm run sync:www && npx cap sync android",
-    "apk": "npm run sync && cd android && ./gradlew assembleRelease && mkdir -p ../../dist && cp app/build/outputs/apk/release/app-release.apk ../../dist/ombre-du-dojo.apk",
+    "sync:native": "npm run sync:www && rm -rf ../ombre-du-dojo-android/app/src/main/assets/public && mkdir -p ../ombre-du-dojo-android/app/src/main/assets/public && cp -a www/. ../ombre-du-dojo-android/app/src/main/assets/public/ && cp capacitor.config.json ../ombre-du-dojo-android/app/src/main/assets/capacitor.config.json",
+    "apk": "npm run sync:native && cd ../ombre-du-dojo-android && ./gradlew assembleRelease && mkdir -p ../dist && cp app/build/outputs/apk/release/app-release.apk ../dist/ombre-du-dojo.apk",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
