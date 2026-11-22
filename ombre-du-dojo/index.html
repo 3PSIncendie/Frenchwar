@@ -83,6 +83,7 @@
         <button type="button" id="btn-continue" class="btn primary hidden">Continuer</button>
         <button type="button" id="btn-play" class="btn ghost">Nouvelle partie</button>
         <button type="button" id="btn-save-menu" class="btn ghost hidden">Sauvegarder</button>
+        <button type="button" id="btn-install-home" class="btn ghost">Icône sur le bureau</button>
         <a class="btn ghost" id="btn-download-qr" href="telecharger.html">Télécharger APK</a>
       </div>
       <aside class="qr-panel" aria-label="QR code de téléchargement">
@@ -159,6 +160,12 @@
           if (reg) reg.update();
         });
       }
+      // Keep install prompt available for "Ajouter à l'écran d'accueil"
+      window.__ombreInstallPrompt = null;
+      window.addEventListener("beforeinstallprompt", function (e) {
+        e.preventDefault();
+        window.__ombreInstallPrompt = e;
+      });
       document.addEventListener("visibilitychange", function () {
         if (document.visibilityState === "visible") checkUpdates();
       });

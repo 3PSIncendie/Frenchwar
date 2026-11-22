@@ -1962,6 +1962,20 @@
       updateContinueBtn();
       startLevel();
     };
+    const installHome = $("btn-install-home");
+    if (installHome) {
+      installHome.onclick = async () => {
+        const promptEvt = window.__ombreInstallPrompt;
+        if (promptEvt) {
+          promptEvt.prompt();
+          await promptEvt.userChoice;
+          window.__ombreInstallPrompt = null;
+          showToast("Icône ajoutée");
+          return;
+        }
+        window.location.href = "telecharger.html";
+      };
+    }
     $("btn-next-level").onclick = () => {
       persist();
       startLevel();

@@ -95,32 +95,62 @@
     <p class="eyebrow">JEUX ÉMILE</p>
     <h1>Ombre du Dojo</h1>
     <img class="app-icon" src="assets/icons/icon-512.png" width="112" height="112" alt="Icône Ombre du Dojo" />
-    <p class="lead">Installe l’APK Android : l’icône du ninja apparaît sur ton bureau / écran d’accueil.</p>
+    <p class="lead">Installe l’APK : cherche ensuite <strong>Ombre</strong> / <strong>Ombre du Dojo</strong> dans le tiroir d’applications, puis ajoute l’icône au bureau.</p>
 
     <div class="apk-card">
       <h2>APK Android</h2>
-      <p>Fichier <code>ombre-du-dojo.apk</code> (~8 Mo). Autorise l’installation depuis des sources inconnues si demandé, puis ouvre l’app depuis l’icône. À chaque ouverture, l’app charge les dernières mises à jour en ligne.</p>
+      <p>Fichier <code>ombre-du-dojo.apk</code> (~8 Mo). Sur Android 8+, l’icône va d’abord dans la liste des apps (pas toujours directement sur l’écran d’accueil).</p>
       <div class="actions" style="margin-top:0; justify-content:flex-start">
         <a class="btn primary" href="download/ombre-du-dojo.apk" download="ombre-du-dojo.apk">Télécharger l’APK</a>
       </div>
-      <p class="note">Package : com.jeuxemile.ombredudojo · version 1.0</p>
+      <p class="note">Package : com.jeuxemile.ombredudojo · v1.1 · icône ninja corrigée</p>
     </div>
 
-    <p class="lead" style="margin-bottom:1rem">Ou scanne le QR pour la version web / PWA.</p>
+    <div class="apk-card">
+      <h2>Sans APK (PWA)</h2>
+      <p>Ouvre le jeu dans Chrome, puis ajoute-le à l’écran d’accueil pour avoir l’icône.</p>
+      <div class="actions" style="margin-top:0; justify-content:flex-start">
+        <button type="button" class="btn primary" id="btn-install-pwa">Ajouter à l’écran d’accueil</button>
+        <a class="btn ghost" href="./">Ouvrir le jeu</a>
+      </div>
+    </div>
+
+    <p class="lead" style="margin-bottom:1rem">QR vers le jeu web</p>
     <div class="qr-plate">
       <img src="assets/qr-download.png" width="280" height="280" alt="QR code vers https://ombre-du-dojo.apps.grok.bot" />
     </div>
     <p class="url"><a href="https://ombre-du-dojo.apps.grok.bot" style="color:inherit">https://ombre-du-dojo.apps.grok.bot</a></p>
     <ol class="steps">
-      <li>Télécharge l’APK (recommandé) ou scanne le QR.</li>
-      <li>Installe → accepte si Android demande une source externe.</li>
-      <li>Lance <strong>Ombre du Dojo</strong> depuis l’icône sur le bureau.</li>
+      <li>Télécharge et installe l’APK (autorise « sources inconnues » si demandé).</li>
+      <li>Ouvre le tiroir d’apps → cherche <strong>Ombre</strong>.</li>
+      <li>Maintiens l’icône → « Ajouter à l’écran d’accueil » / « Bureau ».</li>
     </ol>
     <div class="actions">
       <a class="btn primary" href="download/ombre-du-dojo.apk" download="ombre-du-dojo.apk">APK Android</a>
-      <a class="btn ghost" href="https://ombre-du-dojo.apps.grok.bot">Ouvrir le jeu web</a>
       <a class="btn ghost" href="./">Retour</a>
     </div>
   </main>
+  <script>
+    (function () {
+      var deferred = null;
+      var btn = document.getElementById("btn-install-pwa");
+      window.addEventListener("beforeinstallprompt", function (e) {
+        e.preventDefault();
+        deferred = e;
+        if (btn) btn.style.display = "inline-flex";
+      });
+      if (btn) {
+        btn.addEventListener("click", async function () {
+          if (deferred) {
+            deferred.prompt();
+            await deferred.userChoice;
+            deferred = null;
+            return;
+          }
+          alert("Sur Android Chrome : menu ⋮ → « Ajouter à l’écran d’accueil » / « Installer l’application ».");
+        });
+      }
+    })();
+  </script>
 </body>
 </html>
