@@ -412,8 +412,11 @@
   function spawnEnemy(type) {
     const lv = save.level;
     const sc = enemyScale(lv);
-    // Enter just past the right edge of the camera so they are visible quickly.
-    const x = Math.min(LEVEL_W - 60, cameraX + window.innerWidth * 0.92 + Math.random() * 40);
+    // Always arrive in front of the hero (to their right), never from behind.
+    const heroX = player ? player.x : 160;
+    const frontMin = heroX + 240;
+    const camFront = cameraX + window.innerWidth * 0.88;
+    const x = Math.min(LEVEL_W - 60, Math.max(frontMin, camFront) + Math.random() * 50);
     const gy = groundYAt(x);
     const defs = {
       bandit: { w: 64, h: 112, hp: 24, dmg: 7, speed: 130, gold: 12, sprite: "bandit" },
@@ -868,8 +871,15 @@
       if (e.hopCd > 0) e.hopCd -= dt;
       if (e.swing > 0) e.swing = Math.max(0, e.swing - dt * 2.5);
 
+      // Keep enemies in front (right of hero). If they slip behind, re-enter from the front.
+      if (e.x < player.x - 40) {
+        e.x = Math.min(LEVEL_W - 60, player.x + Math.max(280, window.innerWidth * 0.55));
+        e.y = groundYAt(e.x);
+        e.vx = -Math.abs(e.speed);
+      }
       const dx = player.x - e.x;
       const dist = Math.abs(dx);
+      // Logical facing: -1 = looking/moving left toward the hero in front
       e.facing = dx >= 0 ? 1 : -1;
       const playerThreatening =
         (player.attacking > 0 || player.kicking > 0 || player.slash > 0.2 || player.kickSwing > 0.2) &&
@@ -1074,7 +1084,9 @@
       rot = Math.sin(ent.anim * 2) * 0.25;
     }
     ctx.rotate(rot);
-    ctx.scale(ent.facing, 1);
+    // Hero art faces right; enemy art faces left — flip so they look at each other (de face).
+    const look = isPlayer ? ent.facing : -ent.facing;
+    ctx.scale(look, 1);
 
     // lean / squash for motion
     let sxScale = 1;
