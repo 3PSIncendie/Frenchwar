@@ -1,6 +1,6 @@
 {
   "name": "ombre-du-dojo",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Combat vue de côté façon shinobi : plateformes, katana + coup de pied, décors japonais, boutique.",
   "main": "game.js",
   "scripts": {

@@ -17,9 +17,14 @@ Après installation : tiroir d’apps → **Ombre** → ajouter au bureau si bes
 Reconstruire l’APK release (SDK Android requis) :
 
 ```bash
+cp android/keystore.properties.example android/keystore.properties
+# remplir storePassword / keyPassword localement (jamais committer)
+# placer le .jks dans android/keystore/ (gitignoré)
 npm install
 npm run apk
 ```
+
+La clé de signature v1.3 a été renouvelée : désinstaller l’ancienne APK avant d’installer.
 
 ## Lancer (web)
 
