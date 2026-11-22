@@ -1557,348 +1557,449 @@
     });
   }
 
-  function cloth(isPlayer) {
-    return isPlayer
-      ? { fill: "#1e2a36", shade: "#121920", boot: "#0e141a", skin: "#d9b08c" }
-      : { fill: "#5a3224", shade: "#2e1810", boot: "#1a0e0a", skin: "#c99570" };
+  /** Palette for fully procedural humanoids (no sprite limbs). */
+  function palette(ent, isPlayer) {
+    if (isPlayer) {
+      return {
+        cloth: "#1a2430",
+        clothLite: "#2c3a4a",
+        clothDark: "#0d1218",
+        sash: "#8b1e1e",
+        mask: "#121820",
+        skin: "#c9a07a",
+        eye: "#e8efe8",
+        steel: "#efe2b4",
+        hilt: "#6a4220",
+        accent: "#e8a84a",
+      };
+    }
+    if (ent.type === "kunoichi") {
+      return {
+        cloth: "#2a1828",
+        clothLite: "#3e2440",
+        clothDark: "#140c14",
+        sash: "#a83858",
+        mask: "#1a1018",
+        skin: "#d0a888",
+        eye: "#f0e8f0",
+        steel: "#f0c0c8",
+        hilt: "#5a2838",
+        accent: "#e07090",
+      };
+    }
+    if (ent.type === "oni" || ent.type === "boss") {
+      return {
+        cloth: "#4a2018",
+        clothLite: "#6a3428",
+        clothDark: "#24100c",
+        sash: "#c45a20",
+        mask: "#3a1810",
+        skin: "#b06048",
+        eye: "#ffe8a0",
+        steel: "#f0d090",
+        hilt: "#402018",
+        accent: "#e8a84a",
+      };
+    }
+    return {
+      cloth: "#3a281c",
+      clothLite: "#534032",
+      clothDark: "#1c140e",
+      sash: "#8a5020",
+      mask: "#241810",
+      skin: "#c09070",
+      eye: "#f0e8d8",
+      steel: "#e8d0a8",
+      hilt: "#4a3020",
+      accent: "#d08040",
+    };
   }
 
-  /** Filled tapered limb segment (more natural than a fat stroke). */
-  function drawLimbSeg(x0, y0, x1, y1, w0, w1, fill, shade) {
+  function capsule(x0, y0, x1, y1, r0, r1, fill, stroke) {
     const ang = Math.atan2(y1 - y0, x1 - x0);
-    const c = Math.cos(ang + Math.PI / 2);
-    const s = Math.sin(ang + Math.PI / 2);
+    const nx = Math.cos(ang + Math.PI / 2);
+    const ny = Math.sin(ang + Math.PI / 2);
     ctx.beginPath();
-    ctx.moveTo(x0 + c * w0, y0 + s * w0);
-    ctx.lineTo(x1 + c * w1, y1 + s * w1);
-    ctx.lineTo(x1 - c * w1, y1 - s * w1);
-    ctx.lineTo(x0 - c * w0, y0 - s * w0);
+    ctx.moveTo(x0 + nx * r0, y0 + ny * r0);
+    ctx.lineTo(x1 + nx * r1, y1 + ny * r1);
+    ctx.arc(x1, y1, r1, ang + Math.PI / 2, ang - Math.PI / 2, true);
+    ctx.lineTo(x0 - nx * r0, y0 - ny * r0);
+    ctx.arc(x0, y0, r0, ang - Math.PI / 2, ang + Math.PI / 2, true);
     ctx.closePath();
     ctx.fillStyle = fill;
     ctx.fill();
-    ctx.strokeStyle = shade;
-    ctx.lineWidth = 1.1;
-    ctx.stroke();
-  }
-
-  /**
-   * Head+torso only: crop out painted arms & legs so articulated limbs
-   * replace them (no fixed katana arm under a moving overlay).
-   */
-  function drawBodyCore(spr, drawW, drawH, phase, moving) {
-    if (!spr) return;
-    const stride = moving ? Math.sin(phase) : 0;
-    const bob = moving ? Math.abs(Math.sin(phase)) * 4 : 0;
-    const lean = stride * 0.08;
-    // Vertical: keep to waist. Horizontal: narrow center strip = torso/head, no arms.
-    const split = 0.56;
-    const srcMid = spr.width * 0.5;
-    const srcHalf = spr.width * 0.2;
-    const srcX = srcMid - srcHalf;
-    const srcW = srcHalf * 2;
-    const srcH = spr.height * split;
-    const dstW = drawW * 0.55;
-    const dstH = drawH * split;
-
-    ctx.save();
-    ctx.translate(stride * 1.5, -drawH + dstH * 0.5 - bob);
-    ctx.rotate(-lean);
-    ctx.drawImage(spr, srcX, 0, srcW, srcH, -dstW * 0.5, -dstH * 0.5, dstW, dstH);
-    ctx.restore();
-  }
-
-  /** Natural walk / idle / air legs. */
-  function drawActorLegs(ent, drawH, isPlayer) {
-    const c = cloth(isPlayer);
-    const phase = ent.gait || ent.anim;
-    const moving = ent.onGround && Math.abs(ent.vx) > 12;
-    const amp = moving
-      ? Math.max(0.45, Math.min(1, Math.abs(ent.vx) / Math.max(100, (ent.speed || 160) * 0.55)))
-      : 0.12;
-    const hipY = -drawH * 0.3;
-    const thighLen = drawH * 0.27;
-    const shinLen = drawH * 0.25;
-    const a = moving ? Math.sin(phase) : Math.sin(phase * 0.35) * 0.25;
-    ctx.globalAlpha = 1;
-
-    function leg(side, swing) {
-      const hipX = side * 7;
-      let hipAng;
-      let knee;
-      if (!ent.onGround) {
-        hipAng = side * 0.35 + swing * 0.15;
-        knee = 1.05;
-      } else {
-        hipAng = swing * 0.7 * amp;
-        knee = 0.28 + Math.max(0, -swing) * 0.55 * amp + (moving ? 0 : 0.12);
-      }
-      const kx = hipX + Math.sin(hipAng) * thighLen;
-      const ky = hipY + Math.cos(hipAng) * thighLen;
-      const footAng = hipAng + knee;
-      const fx = kx + Math.sin(footAng) * shinLen;
-      const fy = Math.min(-3, ky + Math.cos(footAng) * shinLen);
-      const tw = Math.max(5.5, drawH * 0.055);
-      const sw = Math.max(4.5, drawH * 0.045);
-      drawLimbSeg(hipX, hipY, kx, ky, tw, tw * 0.85, c.fill, c.shade);
-      drawLimbSeg(kx, ky, fx, fy, sw, sw * 0.75, c.fill, c.shade);
-      // boot
-      ctx.fillStyle = c.boot;
-      ctx.beginPath();
-      ctx.ellipse(fx + side * 3, fy + 1.5, 9, 3.8, footAng * 0.15, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    leg(-1, a);
-    leg(1, -a);
-  }
-
-  /** Back arm (opposite swing to front sword arm). */
-  function drawRearArm(ent, drawH, isPlayer, attackT) {
-    const c = cloth(isPlayer);
-    const phase = ent.gait || ent.anim;
-    const moving = ent.onGround && Math.abs(ent.vx) > 12;
-    const shoulderY = -drawH * 0.55;
-    const sx = -9;
-    const armLen = drawH * 0.29;
-    let ang;
-    if (attackT != null) {
-      ang = 0.55 + Math.min(1, attackT) * 0.35;
-    } else if (!ent.onGround) {
-      ang = -0.4;
-    } else {
-      const swing = Math.sin(phase);
-      ang = -0.25 + (-swing) * (moving ? 0.75 : 0.12);
-    }
-    const ex = sx + Math.sin(ang) * armLen;
-    const ey = shoulderY + Math.cos(ang) * armLen;
-    const w = Math.max(4.5, drawH * 0.042);
-    drawLimbSeg(sx, shoulderY, ex, ey, w, w * 0.75, c.fill, c.shade);
-    ctx.fillStyle = c.skin;
-    ctx.beginPath();
-    ctx.arc(ex, ey, 4.2, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  /**
-   * Front arm = the character's real leading arm (+X after facing scale).
-   * This is the only katana arm — sprite arms are cropped away.
-   */
-  function drawFrontSwordArm(ent, drawH, attackT, isPlayer) {
-    const c = cloth(isPlayer);
-    const shoulderY = -drawH * 0.55;
-    const sx = 10;
-    const upper = drawH * 0.2;
-    const lower = drawH * 0.16;
-    const phase = ent.gait || ent.anim;
-    const moving = ent.onGround && Math.abs(ent.vx) > 12;
-    let shoulderAng;
-    let elbowBend;
-    let ease = 0;
-
-    if (attackT != null) {
-      ease = attackT < 0.2 ? attackT / 0.2 : attackT < 0.7 ? 0.1 + ((attackT - 0.2) / 0.5) * 0.9 : 1;
-      // wind-up raised → slash forward/down
-      shoulderAng = -2.4 + ease * 3.2;
-      elbowBend = 0.35 - ease * 0.15;
-    } else if (!ent.onGround) {
-      shoulderAng = -0.85;
-      elbowBend = 0.55;
-    } else {
-      const walk = Math.sin(phase);
-      // opposite to rear arm: front arm swings with the blade at rest
-      shoulderAng = -0.7 + walk * (moving ? 0.55 : 0.1);
-      elbowBend = 0.45 + Math.max(0, -walk) * 0.2;
-    }
-
-    const midX = sx + Math.cos(shoulderAng) * upper;
-    const midY = shoulderY + Math.sin(shoulderAng) * upper;
-    const handAng = shoulderAng + elbowBend;
-    const handX = midX + Math.cos(handAng) * lower;
-    const handY = midY + Math.sin(handAng) * lower;
-    const w = Math.max(5, drawH * 0.048);
-
-    drawLimbSeg(sx, shoulderY, midX, midY, w, w * 0.9, c.fill, c.shade);
-    drawLimbSeg(midX, midY, handX, handY, w * 0.85, w * 0.7, c.fill, c.shade);
-    ctx.fillStyle = c.skin;
-    ctx.beginPath();
-    ctx.arc(handX, handY, 4.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Katana follows the hand — same angle as forearm
-    const bladeAng = handAng;
-    const bladeLen = isPlayer ? 48 : 38;
-    const tipX = handX + Math.cos(bladeAng) * bladeLen;
-    const tipY = handY + Math.sin(bladeAng) * bladeLen;
-    ctx.strokeStyle = isPlayer ? "#6e4520" : "#5a3428";
-    ctx.lineWidth = 4.5;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(handX - Math.cos(bladeAng) * 3, handY - Math.sin(bladeAng) * 3);
-    ctx.lineTo(handX + Math.cos(bladeAng) * 7, handY + Math.sin(bladeAng) * 7);
-    ctx.stroke();
-    ctx.strokeStyle = isPlayer ? "#efe0b8" : "#f0b090";
-    ctx.lineWidth = isPlayer ? 3.4 : 2.9;
-    ctx.beginPath();
-    ctx.moveTo(handX, handY);
-    ctx.lineTo(tipX, tipY);
-    ctx.stroke();
-    ctx.strokeStyle = "rgba(255,255,255,0.65)";
-    ctx.lineWidth = 1.15;
-    ctx.beginPath();
-    ctx.moveTo(handX + Math.cos(bladeAng) * 8, handY + Math.sin(bladeAng) * 8);
-    ctx.lineTo(tipX, tipY);
-    ctx.stroke();
-
-    if (attackT != null && ease > 0.15 && ease < 0.92) {
-      ctx.strokeStyle = isPlayer ? "rgba(232,168,74,0.55)" : "rgba(255,120,90,0.4)";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(sx, shoulderY, upper + lower + bladeLen * 0.45, bladeAng - 0.9, bladeAng);
+    if (stroke) {
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 1;
       ctx.stroke();
     }
   }
 
-  function drawActor(ent, spriteKey, isPlayer) {
-    const spr = img[spriteKey] || img.hero;
+  function joint(x, y, r, fill) {
+    ctx.fillStyle = fill;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  /**
+   * Fully articulated humanoid: pelvis, torso, head, 2 arms, 2 legs, katana.
+   * Feet at y=0. Pose driven by gait + combat state — no sprite overlay.
+   */
+  function poseHumanoid(ent, isPlayer) {
+    const H = ent.h;
+    const phase = ent.gait || ent.anim;
+    const moving = ent.onGround && Math.abs(ent.vx) > 14;
+    const run = moving ? Math.min(1.15, Math.abs(ent.vx) / Math.max(120, (ent.speed || 160) * 0.5)) : 0;
+    const swing = Math.sin(phase);
+    const attackT =
+      (isPlayer && ent.attacking > 0)
+        ? 1 - Math.min(1, ent.attacking / 0.32)
+        : (!isPlayer && ent.pose === "attack" && (ent.swing || 0) > 0)
+          ? Math.min(1, Math.max(0, 1 - ent.swing))
+          : null;
+    const kickT =
+      (isPlayer && ent.kicking > 0)
+        ? 1 - Math.min(1, ent.kicking / 0.36)
+        : (!isPlayer && ent.pose === "kick")
+          ? 0.75
+          : null;
+    const guard = ent.pose === "defend" || ent.pose === "guard" || (isPlayer && (ent.defending > 0 || false));
+    const hurt = ent.pose === "hurt" || ent.hitFlash > 0.08;
+    const air = !ent.onGround;
+
+    // Skeleton lengths (human proportions)
+    const thigh = H * 0.26;
+    const shin = H * 0.25;
+    const upper = H * 0.2;
+    const lower = H * 0.18;
+    const torso = H * 0.28;
+    const hipSpread = H * 0.07;
+    const shoulderSpread = H * 0.12;
+
+    const pelvisY = -H * 0.48;
+    const breath = Math.sin(ent.anim * 1.6) * (moving ? 0.5 : 1.4);
+    let torsoLean = (ent.lean || 0) * 0.9;
+    if (air) torsoLean += Math.max(-0.12, Math.min(0.1, -ent.vy * 0.00015));
+    if (attackT != null) torsoLean += (attackT < 0.35 ? -0.18 : 0.22);
+    if (hurt) torsoLean -= 0.2;
+
+    // Legs: opposite phase, human walk (stance / swing)
+    function legAngles(side) {
+      // side +1 = front (toward facing after scale), -1 = rear
+      const s = side * swing;
+      if (kickT != null && side > 0) {
+        return { hip: -0.2 - kickT * 1.1, knee: 0.15 + kickT * 0.2 };
+      }
+      if (air) {
+        return {
+          hip: side * 0.55 + (ent.vy < 0 ? -0.15 : 0.25),
+          knee: 0.9 + Math.abs(side) * 0.15,
+        };
+      }
+      if (!moving) {
+        return {
+          hip: side * 0.08 + Math.sin(ent.anim * 0.7) * 0.03 * side,
+          knee: 0.18,
+        };
+      }
+      // Walk: positive swing = leg forward
+      const hip = s * (0.55 + run * 0.35);
+      const knee = 0.25 + Math.max(0, -s) * (0.7 + run * 0.35) + Math.max(0, s) * 0.08;
+      return { hip, knee };
+    }
+
+    function armAngles(side, isSword) {
+      if (guard) {
+        return isSword
+          ? { sh: -1.9, el: 1.1 }
+          : { sh: -1.6, el: 1.0 };
+      }
+      if (hurt) {
+        return { sh: -0.4 + side * 0.2, el: 1.1 };
+      }
+      if (attackT != null && isSword) {
+        const e = attackT < 0.22 ? attackT / 0.22 : attackT < 0.7 ? 0.12 + ((attackT - 0.22) / 0.48) * 0.88 : 1;
+        return { sh: -2.55 + e * 3.45, el: 0.55 - e * 0.25, slash: e };
+      }
+      if (attackT != null && !isSword) {
+        return { sh: 0.35 + attackT * 0.4, el: 0.9 };
+      }
+      if (kickT != null) {
+        return isSword ? { sh: -0.9, el: 0.7 } : { sh: 0.2, el: 0.85 };
+      }
+      if (air) {
+        return { sh: -0.95 + side * 0.15, el: 0.65 };
+      }
+      if (!moving) {
+        // Idle: sword arm rests blade back along hip
+        return isSword
+          ? { sh: -0.95 + Math.sin(ent.anim * 0.9) * 0.06, el: 0.55 }
+          : { sh: 0.15 + Math.sin(ent.anim * 0.9 + 1) * 0.05, el: 0.7 };
+      }
+      // Walk: arms opposite to legs (front arm moves with -swing)
+      const a = -side * swing; // when side=+1 (front), a = -swing
+      return {
+        sh: (isSword ? -0.85 : 0.1) + a * (0.7 + run * 0.35),
+        el: 0.45 + Math.max(0, -a) * 0.35,
+      };
+    }
+
+    const L = legAngles(-1);
+    const R = legAngles(1);
+    const rearArm = armAngles(-1, false);
+    const swordArm = armAngles(1, true);
+
+    return {
+      H,
+      thigh,
+      shin,
+      upper,
+      lower,
+      torso,
+      hipSpread,
+      shoulderSpread,
+      pelvisY,
+      breath,
+      torsoLean,
+      L,
+      R,
+      rearArm,
+      swordArm,
+      attackT,
+      kickT,
+      guard,
+      moving,
+      swing,
+      run,
+    };
+  }
+
+  function drawHumanoid(ent, isPlayer) {
+    const p = palette(ent, isPlayer);
+    const pose = poseHumanoid(ent, isPlayer);
+    const {
+      H, thigh, shin, upper, lower, torso, hipSpread, shoulderSpread,
+      pelvisY, breath, torsoLean, L, R, rearArm, swordArm, attackT, kickT, guard, swing, moving,
+    } = pose;
+
+    // Pelvis
+    const pelvisX = 0;
+    const neckX = torsoLean * H * 0.35;
+    const neckY = pelvisY - torso + breath;
+    const shoulderY = neckY + H * 0.02;
+
+    // FK helpers — angles measured from +Y down (gravity), so 0 = straight down
+    function fk(ox, oy, ang, len) {
+      // convert: 0 down → use sin/cos with ang from downward
+      return { x: ox + Math.sin(ang) * len, y: oy + Math.cos(ang) * len };
+    }
+
+    // Legs
+    const hipL = { x: pelvisX - hipSpread, y: pelvisY };
+    const hipR = { x: pelvisX + hipSpread, y: pelvisY };
+    const kneeL = fk(hipL.x, hipL.y, L.hip, thigh);
+    const kneeR = fk(hipR.x, hipR.y, R.hip, thigh);
+    const footL = fk(kneeL.x, kneeL.y, L.hip + L.knee, shin);
+    const footR = fk(kneeR.x, kneeR.y, R.hip + R.knee, shin);
+    footL.y = Math.min(-2, footL.y);
+    footR.y = Math.min(-2, footR.y);
+
+    // Arms
+    const shL = { x: neckX - shoulderSpread, y: shoulderY };
+    const shR = { x: neckX + shoulderSpread, y: shoulderY };
+    // Arm angles: 0 = straight down; negative = forward/up toward facing (+X)
+    function armFk(ox, oy, sh, el, uLen, lLen) {
+      // map sh: more negative raises toward +X (overhead slash uses ~-2.5)
+      const mid = { x: ox + Math.cos(sh) * uLen, y: oy + Math.sin(sh) * uLen };
+      const hand = { x: mid.x + Math.cos(sh + el) * lLen, y: mid.y + Math.sin(sh + el) * lLen };
+      return { mid, hand, tipAng: sh + el };
+    }
+    const leftA = armFk(shL.x, shL.y, rearArm.sh, rearArm.el, upper, lower);
+    const rightA = armFk(shR.x, shR.y, swordArm.sh, swordArm.el, upper, lower);
+
+    const tw = Math.max(5.5, H * 0.052);
+    const sw = Math.max(4.4, H * 0.042);
+    const aw = Math.max(4.6, H * 0.044);
+
+    // Draw order: rear leg, rear arm, torso, front leg, front arm+katana, head
+    // Rear (left) leg
+    capsule(hipL.x, hipL.y, kneeL.x, kneeL.y, tw, tw * 0.88, p.cloth, p.clothDark);
+    capsule(kneeL.x, kneeL.y, footL.x, footL.y, sw, sw * 0.75, p.clothLite, p.clothDark);
+    ctx.fillStyle = p.clothDark;
+    ctx.beginPath();
+    ctx.ellipse(footL.x + 3, footL.y + 1, 8, 3.4, L.hip * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Rear arm
+    capsule(shL.x, shL.y, leftA.mid.x, leftA.mid.y, aw, aw * 0.88, p.cloth, p.clothDark);
+    capsule(leftA.mid.x, leftA.mid.y, leftA.hand.x, leftA.hand.y, aw * 0.82, aw * 0.65, p.clothLite, p.clothDark);
+    joint(leftA.hand.x, leftA.hand.y, 3.6, p.skin);
+
+    // Torso (trapezoid) + sash
+    ctx.beginPath();
+    ctx.moveTo(pelvisX - hipSpread * 1.15, pelvisY + 2);
+    ctx.lineTo(pelvisX + hipSpread * 1.15, pelvisY + 2);
+    ctx.lineTo(neckX + shoulderSpread * 0.95, shoulderY + 4);
+    ctx.lineTo(neckX - shoulderSpread * 0.95, shoulderY + 4);
+    ctx.closePath();
+    ctx.fillStyle = p.cloth;
+    ctx.fill();
+    ctx.strokeStyle = p.clothDark;
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    // sash
+    ctx.fillStyle = p.sash;
+    ctx.fillRect(pelvisX - hipSpread * 1.05, pelvisY - 4, hipSpread * 2.1, 7);
+    // shoulder pads
+    joint(shL.x, shL.y, 5.5, p.clothDark);
+    joint(shR.x, shR.y, 5.5, p.clothDark);
+
+    // Front (right) leg
+    capsule(hipR.x, hipR.y, kneeR.x, kneeR.y, tw, tw * 0.88, p.cloth, p.clothDark);
+    capsule(kneeR.x, kneeR.y, footR.x, footR.y, sw, sw * 0.75, p.clothLite, p.clothDark);
+    ctx.fillStyle = p.clothDark;
+    ctx.beginPath();
+    ctx.ellipse(footR.x + 4, footR.y + 1, 8.5, 3.4, R.hip * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    if (kickT != null) {
+      ctx.fillStyle = "rgba(62,207,154,0.75)";
+      ctx.beginPath();
+      ctx.arc(footR.x + 6, footR.y, 7, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Front sword arm (the leading arm — only arm holding the katana)
+    capsule(shR.x, shR.y, rightA.mid.x, rightA.mid.y, aw * 1.05, aw * 0.92, p.cloth, p.clothDark);
+    capsule(rightA.mid.x, rightA.mid.y, rightA.hand.x, rightA.hand.y, aw * 0.88, aw * 0.7, p.clothLite, p.clothDark);
+    joint(rightA.hand.x, rightA.hand.y, 4, p.skin);
+
+    // Katana in front hand
+    {
+      const ang = rightA.tipAng;
+      const hx = rightA.hand.x;
+      const hy = rightA.hand.y;
+      const blade = isPlayer ? H * 0.42 : H * 0.36;
+      const tipX = hx + Math.cos(ang) * blade;
+      const tipY = hy + Math.sin(ang) * blade;
+      ctx.lineCap = "round";
+      ctx.strokeStyle = p.hilt;
+      ctx.lineWidth = 4.2;
+      ctx.beginPath();
+      ctx.moveTo(hx - Math.cos(ang) * 4, hy - Math.sin(ang) * 4);
+      ctx.lineTo(hx + Math.cos(ang) * 8, hy + Math.sin(ang) * 8);
+      ctx.stroke();
+      // tsuba
+      ctx.strokeStyle = p.accent;
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.moveTo(hx + Math.cos(ang) * 6 + Math.cos(ang + 1.57) * 5, hy + Math.sin(ang) * 6 + Math.sin(ang + 1.57) * 5);
+      ctx.lineTo(hx + Math.cos(ang) * 6 - Math.cos(ang + 1.57) * 5, hy + Math.sin(ang) * 6 - Math.sin(ang + 1.57) * 5);
+      ctx.stroke();
+      ctx.strokeStyle = p.steel;
+      ctx.lineWidth = isPlayer ? 3.2 : 2.8;
+      ctx.beginPath();
+      ctx.moveTo(hx, hy);
+      ctx.lineTo(tipX, tipY);
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(255,255,255,0.55)";
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.moveTo(hx + Math.cos(ang) * 10, hy + Math.sin(ang) * 10);
+      ctx.lineTo(tipX, tipY);
+      ctx.stroke();
+      if (swordArm.slash != null && swordArm.slash > 0.15 && swordArm.slash < 0.92) {
+        ctx.strokeStyle = `${p.accent}99`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(shR.x, shR.y, upper + lower + blade * 0.4, ang - 0.95, ang);
+        ctx.stroke();
+      }
+    }
+
+    // Head / hood / mask
+    const headR = Math.max(9, H * 0.09);
+    const headX = neckX;
+    const headY = neckY - headR * 0.85;
+    ctx.fillStyle = p.mask;
+    ctx.beginPath();
+    ctx.arc(headX, headY, headR, 0, Math.PI * 2);
+    ctx.fill();
+    // hood flare
+    ctx.fillStyle = p.clothDark;
+    ctx.beginPath();
+    ctx.ellipse(headX - 1, headY - headR * 0.35, headR * 1.15, headR * 0.85, -0.15, Math.PI, Math.PI * 2);
+    ctx.fill();
+    // eyes
+    ctx.fillStyle = p.eye;
+    ctx.beginPath();
+    ctx.ellipse(headX + headR * 0.22, headY - 1, headR * 0.22, headR * 0.12, 0, 0, Math.PI * 2);
+    ctx.ellipse(headX + headR * 0.55, headY - 1, headR * 0.2, headR * 0.11, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#0a1014";
+    ctx.beginPath();
+    ctx.arc(headX + headR * 0.28, headY - 1, 1.6, 0, Math.PI * 2);
+    ctx.arc(headX + headR * 0.58, headY - 1, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (guard) {
+      ctx.strokeStyle = "rgba(168,200,240,0.8)";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(neckX + 8, shoulderY + 6, 20, -1.0, 0.95);
+      ctx.stroke();
+    }
+  }
+
+  function drawActor(ent, _spriteKey, isPlayer) {
     const sx = ent.x - cameraX;
-    const walking =
-      ent.onGround &&
-      Math.abs(ent.vx) > 14 &&
-      ent.pose !== "attack" &&
-      ent.pose !== "kick" &&
-      ent.pose !== "defend" &&
-      ent.pose !== "hurt";
-    const idle = ent.pose === "idle" || ent.pose === "guard";
+    const moving = ent.onGround && Math.abs(ent.vx) > 14;
     const phase = ent.gait || ent.anim;
     const stride = Math.sin(phase);
-    const breath = Math.sin(ent.anim * 1.4) * 1.2;
-    const bob = walking
-      ? Math.abs(Math.sin(phase)) * 5.5
+    const idle = ent.pose === "idle" || ent.pose === "guard";
+    const bob = moving
+      ? Math.abs(Math.sin(phase)) * (4.5 + Math.min(3, Math.abs(ent.vx) * 0.01))
       : idle
-        ? breath
-        : !ent.onGround
-          ? Math.min(4, Math.abs(ent.vy) * 0.004)
-          : 0;
+        ? Math.sin(ent.anim * 1.5) * 1.1
+        : 0;
 
     const sq = ent.squash || 0;
-    const bodyLean = ent.lean || 0;
-
     ctx.save();
     ctx.translate(sx, ent.y + bob);
 
-    let rot = bodyLean * (isPlayer ? ent.facing : -ent.facing);
-    if (isPlayer) {
-      if (ent.attacking > 0 && !ent.onGround) rot += -ent.facing * (1 - ent.attacking / 0.35) * 0.45;
-      if (ent.kicking > 0 && !ent.onGround) rot += -ent.facing * 0.55;
-      if (!ent.onGround) rot += -ent.facing * Math.max(-0.12, Math.min(0.14, -ent.vy * 0.00018));
-    } else if (!ent.onGround) {
-      rot += Math.sin(ent.anim * 1.6) * 0.1;
-    }
-    if (walking) rot += stride * 0.05;
+    let rot = (ent.lean || 0) * (isPlayer ? ent.facing : -ent.facing) * 0.85;
+    if (!ent.onGround) rot += (isPlayer ? -ent.facing : 1) * Math.max(-0.1, Math.min(0.12, -ent.vy * 0.00014));
+    if (moving) rot += stride * 0.04 * (isPlayer ? ent.facing : -ent.facing);
     ctx.rotate(rot);
+
     const look = isPlayer ? ent.facing : -ent.facing;
     ctx.scale(look, 1);
 
-    let sxScale = 1 + Math.max(0, sq) * 0.55 - Math.min(0, sq) * 0.35;
-    let syScale = 1 - Math.max(0, sq) * 0.45 + Math.min(0, sq) * 0.55;
-    if (walking) {
-      sxScale *= 1 + Math.sin(phase * 2) * 0.03;
-      syScale *= 1 - Math.abs(Math.sin(phase)) * 0.04;
-    } else if (ent.pose === "defend" || ent.pose === "guard") {
-      sxScale *= 0.94;
-      syScale *= 1.03;
-    } else if (ent.pose === "attack") {
-      sxScale *= 1.05;
-      syScale *= 0.96;
-    } else if (ent.pose === "kick") {
-      sxScale *= 1.08;
-      syScale *= 0.93;
-    } else if (idle) {
-      sxScale *= 1 + Math.sin(ent.anim * 1.4) * 0.012;
-      syScale *= 1 - Math.sin(ent.anim * 1.4) * 0.012;
-    } else if (!ent.onGround) {
-      sxScale *= 0.97;
-      syScale *= 1.03;
+    let sxScale = 1 + Math.max(0, sq) * 0.4 - Math.min(0, sq) * 0.25;
+    let syScale = 1 - Math.max(0, sq) * 0.35 + Math.min(0, sq) * 0.4;
+    if (moving) {
+      sxScale *= 1 + Math.sin(phase * 2) * 0.02;
+      syScale *= 1 - Math.abs(Math.sin(phase)) * 0.03;
     }
     ctx.scale(sxScale, syScale);
 
-    const flashAlpha =
-      ent.hitFlash > 0
-        ? 0.55 + Math.sin(time * 45) * 0.3
-        : isPlayer && ent.invuln > 0 && Math.floor(time * 18) % 2 === 0
-          ? 0.4
-          : 1;
+    if (ent.hitFlash > 0) ctx.globalAlpha = 0.55 + Math.sin(time * 45) * 0.3;
+    else if (isPlayer && ent.invuln > 0 && Math.floor(time * 18) % 2 === 0) ctx.globalAlpha = 0.45;
 
-    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.fillStyle = "rgba(0,0,0,0.32)";
     ctx.beginPath();
-    ctx.ellipse(walking ? stride * 4 : 0, -2, ent.w * (walking ? 0.48 : 0.38), walking ? 4 : 5.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(moving ? stride * 3 : 0, -2, ent.w * (moving ? 0.42 : 0.34), moving ? 3.5 : 4.5, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    const drawH = ent.h;
-    const drawW = spr ? (spr.width / spr.height) * drawH : ent.w * 0.7;
-    const attackingNow =
-      (isPlayer && ent.attacking > 0) || (!isPlayer && ent.pose === "attack" && (ent.swing || 0) > 0);
-    const kickingNow = (isPlayer && ent.kicking > 0) || (!isPlayer && ent.pose === "kick");
-    const attackProg = attackingNow
-      ? isPlayer
-        ? 1 - Math.min(1, ent.attacking / 0.32)
-        : Math.min(1, Math.max(0, 1 - (ent.swing || 0)))
-      : null;
-
-    ctx.globalAlpha = flashAlpha;
-    // Body core only (no painted arms/katana/legs) — limbs are drawn below
-    if (spr) {
-      drawBodyCore(spr, drawW, drawH, phase, walking || Math.abs(ent.vx) > 10);
-    } else {
-      ctx.fillStyle = isPlayer ? "#3a4650" : "#6a3a28";
-      ctx.fillRect(-ent.w * 0.18, -ent.h * 0.95, ent.w * 0.36, ent.h * 0.55);
-    }
+    drawHumanoid(ent, isPlayer);
     ctx.globalAlpha = 1;
 
-    if (!kickingNow) {
-      drawActorLegs(ent, drawH, isPlayer);
-    }
-    // Rear arm first, then front sword arm on top (the real leading arm)
-    if (!kickingNow) {
-      drawRearArm(ent, drawH, isPlayer, attackProg);
-      if (ent.pose !== "hurt") {
-        drawFrontSwordArm(ent, drawH, attackProg, isPlayer);
-      }
-    }
-
-    // Kick: extended striking leg (filled segment)
-    if (kickingNow) {
-      const t = isPlayer ? 1 - Math.min(1, ent.kicking / 0.36) : 0.7;
-      const c = cloth(isPlayer);
-      const hx = 4;
-      const hy = -drawH * 0.3;
-      const fx = 28 + t * 36;
-      const fy = -drawH * (0.22 - t * 0.1);
-      drawLimbSeg(hx, hy, fx, fy, 7, 5, c.fill, c.shade);
-      drawRearArm(ent, drawH, isPlayer, null);
-      drawFrontSwordArm(ent, drawH, null, isPlayer);
-      ctx.fillStyle = "rgba(62,207,154,0.85)";
-      ctx.beginPath();
-      ctx.arc(fx, fy, 6, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // guard / shield silhouette
-    if (ent.pose === "defend" || ent.pose === "guard" || (isPlayer && ent.defending > 0)) {
-      ctx.strokeStyle = "rgba(168,200,240,0.85)";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(ent.w * 0.12, -ent.h * 0.45, 22, -0.9, 0.9);
-      ctx.stroke();
-      ctx.fillStyle = "rgba(168,200,240,0.18)";
-      ctx.beginPath();
-      ctx.arc(ent.w * 0.12, -ent.h * 0.45, 20, -0.9, 0.9);
-      ctx.fill();
-    }
-
     if (!isPlayer && ent.elite) {
-      ctx.strokeStyle = "rgba(232,168,74,0.55)";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(-ent.w * 0.28, -ent.h * 0.98, ent.w * 0.56, ent.h * 0.96);
+      ctx.strokeStyle = "rgba(232,168,74,0.5)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(0, -ent.h * 0.55, ent.w * 0.38, 0, Math.PI * 2);
+      ctx.stroke();
     }
 
     ctx.restore();
