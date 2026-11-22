@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a1218" />
+  <title>Télécharger — Ombre du Dojo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600&family=Teko:wght@500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #070d12;
+      --lantern: #e8a84a;
+      --paper: #e8efe8;
+      --muted: #8aa0a8;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; min-height: 100%;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% 0%, rgba(232,168,74,0.16), transparent 55%),
+        linear-gradient(180deg, #061018 0%, #0e1a22 50%, #132830 100%);
+      color: var(--paper);
+      font-family: "Noto Sans JP", system-ui, sans-serif;
+    }
+    main {
+      max-width: 28rem; margin: 0 auto; padding: 2.5rem 1.25rem 3rem;
+      text-align: center;
+    }
+    .eyebrow {
+      margin: 0 0 0.5rem; letter-spacing: 0.35em; font-size: 0.72rem;
+      color: var(--lantern); text-transform: uppercase;
+    }
+    h1 {
+      margin: 0 0 0.75rem; font-family: Teko, Impact, sans-serif;
+      font-size: clamp(2.8rem, 12vw, 4rem); line-height: 0.95;
+      letter-spacing: 0.04em; text-transform: uppercase; color: var(--lantern);
+    }
+    .lead { margin: 0 0 1.5rem; color: var(--muted); line-height: 1.45; }
+    .qr-plate {
+      display: inline-block; padding: 1rem; border-radius: 1rem;
+      background: #f4efe6; box-shadow: 0 18px 40px rgba(0,0,0,0.35);
+    }
+    .qr-plate img { display: block; width: min(70vw, 280px); height: auto; }
+    .url {
+      margin: 1.25rem 0 0.5rem; word-break: break-all;
+      font-size: 0.95rem; color: #a8c8f0;
+    }
+    .steps {
+      margin: 1.25rem 0 0; padding: 0; list-style: none;
+      text-align: left; color: var(--muted); font-size: 0.9rem; line-height: 1.55;
+    }
+    .steps li { margin: 0.45rem 0; padding-left: 1.4rem; position: relative; }
+    .steps li::before {
+      content: ""; position: absolute; left: 0; top: 0.55em;
+      width: 0.55rem; height: 0.55rem; border-radius: 50%; background: var(--lantern);
+    }
+    .actions { display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: center; margin-top: 1.75rem; }
+    a.btn {
+      appearance: none; text-decoration: none; min-width: 10rem; padding: 0.85rem 1.25rem;
+      font-family: Teko, Impact, sans-serif; font-size: 1.35rem; letter-spacing: 0.08em;
+      text-transform: uppercase; border-radius: 4px; border: 1px solid transparent;
+    }
+    a.btn.primary {
+      background: linear-gradient(180deg,#f0b85a,#d4532a); color: #1a0e06;
+      box-shadow: 0 8px 28px rgba(212,83,42,.35);
+    }
+    a.btn.ghost {
+      background: transparent; border-color: rgba(232,232,220,.28); color: var(--paper);
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="eyebrow">JEUX ÉMILE</p>
+    <h1>Ombre du Dojo</h1>
+    <p class="lead">Scanne le QR code pour ouvrir le jeu sur ton téléphone, puis ajoute-le à l’écran d’accueil.</p>
+    <div class="qr-plate">
+      <img src="assets/qr-download.png" width="280" height="280" alt="QR code vers https://ombre-du-dojo.apps.grok.bot" />
+    </div>
+    <p class="url"><a href="https://ombre-du-dojo.apps.grok.bot" style="color:inherit">https://ombre-du-dojo.apps.grok.bot</a></p>
+    <ol class="steps">
+      <li>Scanne le QR avec l’appareil photo.</li>
+      <li>Ouvre le lien dans le navigateur.</li>
+      <li>Choisis « Ajouter à l’écran d’accueil » / Installer.</li>
+    </ol>
+    <div class="actions">
+      <a class="btn primary" href="https://ombre-du-dojo.apps.grok.bot">Ouvrir le jeu</a>
+      <a class="btn ghost" href="assets/qr-download-card.png" download="ombre-du-dojo-qr.png">Télécharger le QR</a>
+      <a class="btn ghost" href="./">Retour</a>
+    </div>
+  </main>
+</body>
+</html>
