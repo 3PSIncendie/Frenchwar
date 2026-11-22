@@ -210,7 +210,11 @@
   const img = {};
   let assetsReady = false;
 
+  const STORAGE_BACKUP = STORAGE_KEY + "-bak";
   const defaultWeaponLevels = () => ({ katana: 1, shuriken: 1, nodachi: 1, sai: 1 });
+  const UPGRADE_IDS = ["hp", "dmg", "spd", "jump", "kick", "armor"];
+  const OUTFIT_IDS = ["shadow", "crimson", "snow"];
+  const WEAPON_IDS = ["katana", "shuriken", "nodachi", "sai"];
 
   const defaultSave = () => ({
     gold: 0,
@@ -222,7 +226,71 @@
     weaponLevels: defaultWeaponLevels(),
     shuriken: SHURIKEN_MAX,
     upgrades: { hp: 0, dmg: 0, spd: 0, jump: 0, kick: 0, armor: 0 },
+    savedAt: 0,
   });
+
+  function clampInt(n, min, max, fallback) {
+    const v = Number(n);
+    if (!Number.isFinite(v)) return fallback;
+    return Math.max(min, Math.min(max, Math.floor(v)));
+  }
+
+  /** Safe merge — never spreads untrusted objects (no __proto__ / constructor). */
+  function sanitizeSave(raw) {
+    const d = defaultSave();
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return d;
+    const out = defaultSave();
+    out.gold = clampInt(raw.gold, 0, 999999, 0);
+    out.level = clampInt(raw.level, 1, 9999, 1);
+    out.outfit = OUTFIT_IDS.includes(raw.outfit) ? raw.outfit : "shadow";
+    out.weapon =
+      raw.weapon === "shuriken" || !WEAPON_IDS.includes(raw.weapon) ? "katana" : raw.weapon;
+    out.shuriken = clampInt(raw.shuriken, 0, SHURIKEN_MAX, SHURIKEN_MAX);
+    out.savedAt = clampInt(raw.savedAt, 0, Number.MAX_SAFE_INTEGER, 0);
+    out.upgrades = { ...d.upgrades };
+    if (raw.upgrades && typeof raw.upgrades === "object") {
+      UPGRADE_IDS.forEach((id) => {
+        out.upgrades[id] = clampInt(raw.upgrades[id], 0, 20, 0);
+      });
+    }
+    out.weaponLevels = { ...defaultWeaponLevels() };
+    if (raw.weaponLevels && typeof raw.weaponLevels === "object") {
+      WEAPON_IDS.forEach((id) => {
+        out.weaponLevels[id] = clampInt(raw.weaponLevels[id], 1, 20, 1);
+      });
+    }
+    const outfits = Array.isArray(raw.ownedOutfits) ? raw.ownedOutfits : ["shadow"];
+    out.ownedOutfits = Array.from(new Set(["shadow", ...outfits.filter((id) => OUTFIT_IDS.includes(id))]));
+    const weapons = Array.isArray(raw.ownedWeapons) ? raw.ownedWeapons : ["katana", "shuriken"];
+    out.ownedWeapons = Array.from(
+      new Set(["katana", "shuriken", ...weapons.filter((id) => WEAPON_IDS.includes(id))])
+    );
+    if (!out.ownedOutfits.includes(out.outfit)) out.outfit = "shadow";
+    if (!out.ownedWeapons.includes(out.weapon)) out.weapon = "katana";
+    return out;
+  }
+
+  function readStorage(key) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return null;
+      return sanitizeSave(JSON.parse(raw));
+    } catch {
+      return null;
+    }
+  }
+
+  function load() {
+    const primary = readStorage(STORAGE_KEY);
+    const backup = readStorage(STORAGE_BACKUP);
+    if (primary && backup) {
+      // Prefer the freshest / highest level progress
+      const pScore = (primary.savedAt || 0) + primary.level * 1e6 + primary.gold;
+      const bScore = (backup.savedAt || 0) + backup.level * 1e6 + backup.gold;
+      return pScore >= bScore ? primary : backup;
+    }
+    return primary || backup || defaultSave();
+  }
 
   let save = load();
   let state = "menu";
@@ -247,6 +315,7 @@
   let bgBlend = 1;
   let prevDecorId = "forest";
   let bgFlash = 0;
+  let autosaveAcc = 0;
 
   const input = {
     left: false,
@@ -271,27 +340,6 @@
     over: $("screen-over"),
   };
 
-  function load() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return defaultSave();
-      const p = JSON.parse(raw);
-      return {
-        ...defaultSave(),
-        ...p,
-        upgrades: { ...defaultSave().upgrades, ...(p.upgrades || {}) },
-        weaponLevels: { ...defaultWeaponLevels(), ...(p.weaponLevels || {}) },
-        ownedOutfits: p.ownedOutfits || ["shadow"],
-        ownedWeapons: Array.from(
-          new Set([...(p.ownedWeapons || ["katana", "shuriken"]), "shuriken"]).filter((id) => id)
-        ),
-        weapon: p.weapon === "shuriken" ? "katana" : p.weapon || "katana",
-        shuriken: Math.max(0, Math.min(SHURIKEN_MAX, p.shuriken != null ? p.shuriken : SHURIKEN_MAX)),
-      };
-    } catch {
-      return defaultSave();
-    }
-  }
   let toastTimer = 0;
   function showToast(msg) {
     const el = $("toast");
@@ -308,9 +356,23 @@
 
   function persist(opts = {}) {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(save));
-      if (opts.toast) showToast(opts.toast === true ? "Progression sauvegardée" : String(opts.toast));
+      save.level = clampInt(save.level, 1, 9999, 1);
+      save.gold = clampInt(save.gold, 0, 999999, 0);
+      save.savedAt = Date.now();
+      const payload = JSON.stringify(sanitizeSave(save));
+      localStorage.setItem(STORAGE_KEY, payload);
+      localStorage.setItem(STORAGE_BACKUP, payload);
+      // keep in-memory copy sanitized
+      save = sanitizeSave(JSON.parse(payload));
+      if (opts.toast) {
+        const msg =
+          opts.toast === true
+            ? `Sauvegardé — niveau ${save.level}`
+            : String(opts.toast);
+        showToast(msg);
+      }
       updateSaveSummary();
+      updateContinueBtn();
       return true;
     } catch (err) {
       showToast("Sauvegarde impossible");
@@ -323,7 +385,7 @@
     return (
       save.level > 1 ||
       save.gold > 0 ||
-      Object.values(save.upgrades).some((v) => v > 0) ||
+      Object.values(save.upgrades || {}).some((v) => v > 0) ||
       Object.values(wLv).some((v) => v > 1) ||
       (save.ownedOutfits && save.ownedOutfits.length > 1) ||
       (save.ownedWeapons && save.ownedWeapons.length > 1)
@@ -336,7 +398,12 @@
     const gold = $("save-gold");
     if (lv) lv.textContent = String(save.level);
     if (gold) gold.textContent = String(save.gold);
-    if (summary) summary.classList.toggle("hidden", !hasProgress());
+    if (summary) {
+      summary.classList.toggle("hidden", !hasProgress());
+      summary.title = save.savedAt
+        ? `Dernière sauvegarde: ${new Date(save.savedAt).toLocaleString()}`
+        : "";
+    }
   }
 
   function loadImage(src) {
@@ -686,14 +753,17 @@
     if (state === "play" || state === "pause" || state === "won" || state === "dead" || state === "shop") {
       if (state === "play" || state === "pause") {
         save.gold += 10 + save.level * 2;
-        save.level += 1;
-        persist({ toast: `Niv. ${save.level} sauvegardé` });
+        save.level = clampInt(save.level + 1, 1, 9999, 1);
+        persist({ toast: `Niveau suivant sauvegardé — niv. ${save.level}` });
       }
       startLevel();
     }
   }
 
   function startLevel() {
+    save = sanitizeSave(save);
+    // Checkpoint: remember the level about to be played
+    persist();
     decorIdx = (save.level - 1) % DECOR_CYCLE.length;
     decorId = isBossLevel(save.level) ? "boss" : DECOR_CYCLE[decorIdx];
     prevDecorId = decorId;
@@ -712,6 +782,7 @@
     clearTimer = 0;
     shake = 0;
     hitStop = 0;
+    autosaveAcc = 0;
     state = "play";
     showScreen(null);
     updateHud();
@@ -905,19 +976,22 @@
 
   function levelWon() {
     state = "won";
-    const bonus = 28 + save.level * 6 + (isBossLevel(save.level) ? 80 : 0);
+    const cleared = save.level;
+    const bonus = 28 + cleared * 6 + (isBossLevel(cleared) ? 80 : 0);
     save.gold += bonus;
-    save.level += 1;
+    save.level = cleared + 1;
     if (save.shuriken == null) save.shuriken = SHURIKEN_MAX;
     save.shuriken = Math.min(SHURIKEN_MAX, save.shuriken + 3);
-    persist({ toast: `Niv. ${save.level} sauvegardé` });
+    persist({ toast: `Niv. ${cleared} OK → sauvegarde niv. ${save.level}` });
     const next = $("over-title");
     const msg = $("over-msg");
     const shop = $("btn-shop-after");
     const retry = $("btn-retry");
     const nextBtn = $("btn-next-after");
     if (next) next.textContent = "Victoire !";
-    if (msg) msg.textContent = `Niveau terminé. +${bonus} ◆ — or ${save.gold}`;
+    if (msg) {
+      msg.textContent = `Niveau ${cleared} terminé. +${bonus} ◆ — reprise au niv. ${save.level} (or ${save.gold})`;
+    }
     if (shop) shop.classList.remove("hidden");
     if (retry) retry.classList.add("hidden");
     if (nextBtn) nextBtn.classList.remove("hidden");
@@ -926,14 +1000,14 @@
 
   function levelLost() {
     state = "dead";
-    persist();
+    persist({ toast: `Progression gardée — niv. ${save.level}` });
     const next = $("over-title");
     const msg = $("over-msg");
     const shop = $("btn-shop-after");
     const retry = $("btn-retry");
     const nextBtn = $("btn-next-after");
     if (next) next.textContent = "Défaite";
-    if (msg) msg.textContent = `Niveau ${save.level}. Or conservé: ${save.gold} ◆`;
+    if (msg) msg.textContent = `Niveau ${save.level} conservé. Or: ${save.gold} ◆ — Continuer pour rejouer ce niveau`;
     if (shop) shop.classList.remove("hidden");
     if (retry) retry.classList.remove("hidden");
     if (nextBtn) nextBtn.classList.remove("hidden");
@@ -1488,6 +1562,11 @@
       return;
     }
     time += dt;
+    autosaveAcc += dt;
+    if (autosaveAcc >= 12) {
+      autosaveAcc = 0;
+      persist(); // silent checkpoint while playing
+    }
     if (spawnQueue.length) {
       spawnTimer -= dt;
       if (spawnTimer <= 0) {
@@ -2144,23 +2223,28 @@
   }
 
   function manualSave() {
-    persist({ toast: "Progression sauvegardée" });
+    persist({ toast: true });
   }
 
   function bindUi() {
     $("btn-play").onclick = () => {
       if (hasProgress()) {
-        const ok = window.confirm("Effacer la sauvegarde et recommencer au niveau 1 ?");
+        const ok = window.confirm(
+          `Effacer la sauvegarde (niv. ${save.level}, ${save.gold} ◆) et recommencer au niveau 1 ?`
+        );
         if (!ok) return;
       }
       save = defaultSave();
-      persist({ toast: "Nouvelle partie" });
-      updateContinueBtn();
+      persist({ toast: "Nouvelle partie — niv. 1" });
       startLevel();
     };
     $("btn-continue").onclick = () => {
       save = load();
+      if (!hasProgress() && save.level <= 1 && save.gold <= 0) {
+        showToast("Aucune sauvegarde trouvée");
+      }
       updateContinueBtn();
+      showToast(`Reprise niv. ${save.level}`);
       startLevel();
     };
     const installHome = $("btn-install-home");
@@ -2231,9 +2315,16 @@
       };
     });
     window.addEventListener("beforeunload", () => {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(save));
-      } catch (_) {}
+      persist();
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") persist();
+      else {
+        // Reload from disk in case another tab saved further
+        const fresh = load();
+        if ((fresh.savedAt || 0) >= (save.savedAt || 0)) save = fresh;
+        updateContinueBtn();
+      }
     });
   }
 
